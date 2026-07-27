@@ -9,7 +9,6 @@
 
 > 🚀 **We're live on Product Hunt today** — [upvote & say hi](https://www.producthunt.com/products/kinet-aios)
 
-<!-- TODO: drop a 1440×900 screenshot or 30s GIF at docs/hero.png, then remove this note -->
 ![KinetAios hero screenshot](docs/hero.png)
 
 **A local-first, multi-engine AI agent dashboard.** Run Claude Code, Codex, and a built-in ReAct loop side-by-side from one window. Local SQLite history + long-term memory that extracts durable facts automatically. **No account, no relay server — your LLM API key is the only auth.**
@@ -31,6 +30,10 @@ Most AI clients lock you into one provider, lose context when you switch engines
 | Global hotkey + quick panel | ✅ | — | — | — | — |
 | Auto-scan MCP / Skills / Agents | ✅ | ✅ | — | — | — |
 | Project rules (AGENTS / CLAUDE / KINET) | ✅ | — | — | ✅ | ✅ |
+| Built-in MCP Server (remote agent control) | ✅ | — | — | — | — |
+| Plugin system (tools / panels / slash commands) | ✅ | — | — | — | — |
+| Multimodal (image input + voice + screenshot) | ✅ | ✅ | — | — | — |
+| Session branching + cross-engine pipeline | ✅ | — | — | — | — |
 | Local-first, no account | ✅ | ✅ | ✅ | — | — |
 
 ## Install
@@ -59,57 +62,87 @@ npm start
 
 ---
 
-## Tech stack
-
-- **Electron + TypeScript** — the main process runs the agent runtime; the renderer is a native web UI.
-- **better-sqlite3** — SQLite + FTS5 (history / `recall_memory` full-text search).
-- **No frontend framework** — the renderer is vanilla TS + HTML/CSS, bundled with esbuild.
-
 ## Features
 
 ### Three engines (switchable per session; switching clears cross-engine context)
-- **Direct (Kaios)** — a built-in ReAct loop with a GLM/OpenAI-compatible & Anthropic **bidirectional SSE streaming** provider, tool-level concurrency, sub-agents, context compaction, and retry.
-- **Claude Code** — spawns `claude -p --output-format stream-json`, parses NDJSON, resumes with `--resume`.
-- **Codex** — spawns `codex exec --json`, parses JSONL, resumes past sessions.
+- **Direct (Kaios)**: built-in ReAct loop + GLM/OpenAI-compatible & Anthropic **dual-protocol SSE streaming** provider, with tool-level concurrency, sub-agent dispatch, context compaction, and retry.
+- **Claude Code**: spawns `claude -p --output-format stream-json`, parses NDJSON, resumes via `--resume`.
+- **Codex**: spawns `codex exec --json`, parses JSONL, `resume` continuation.
 
-### Direct tools (10)
-`shell` (asks for confirmation before running), `read_file`, `write_file`, `edit_file` (precise replace), `grep` (recursive content search), `glob` (list files), `web_fetch`, `recall_memory`, `git_diff` (read-only, no confirmation; args: `file`, `ref`, `cached`), and `dispatch_agent` (a read-only sub-agent — reuses the ReAct loop with its own context). Claude/Codex use their own CLI tool systems.
+### Direct tools (12)
+`shell` (confirm before exec), `read_file`, `write_file`, `edit_file` (precise replacement), `grep` (recursive content search), `glob` (list files), `web_fetch` (SSRF-protected, Jina Reader fallback), `web_search` (Bing → DuckDuckGo), `recall_memory`, `git_diff` (read-only), `dispatch_agent` (read-only sub-agent with independent context), `flight_plan` (plugin-injected tools may add more).
 
-### MCP
-The Direct engine auto-connects to MCP services configured on the system (scans `~/.claude.json` / `~/.codex/config.toml` / Claude Desktop) over a stdio client; tools are merged into the ReAct loop; dropped connections auto-reconnect. The 🔌 button lists connected services/tools.
+### MCP integration (client + server)
+- **Client**: auto-discovers system-configured MCP services (`~/.claude.json`, `~/.codex/config.toml`, Claude Desktop config), stdio transport, auto-reconnect. 🔌 button shows connected services/tools.
+- **Server**: built-in MCP Server (HTTP+SSE) exposes `run_agent` — remote machines can invoke your local agent with full tool access. Token-authenticated (timing-safe comparison), 5-min timeout, zombie-connection detection.
 
-### Skills / Commands / Agents
-Scans Claude Code skills + commands + agents (including installed plugin content) and Codex skills; invoke via the `/` menu or the ⚡ button; the body is injected into Direct.
+### Long-term memory + memory graph
+- Auto-extracts durable facts from each turn → SQLite → injected into next turn. **Cross-engine, cross-session.**
+- **Memory graph** visualization: force-directed graph showing memory provenance, conflict detection, and timeline. Separate full-screen window.
+- Import/export memories as JSON (migration / backup).
 
-### Sidebar actions (left to right)
-- **＋** — new session.
-- **📂 Workbench** — project cards grouped by cwd. Each card shows recent activity + cost; click to switch. The **Context** button edits that project's `KINET-CONTEXT.md` (extra context injected when the agent runs in that cwd).
-- **📊 Dashboard** — standalone window: live token usage, cost stats, engine distribution across all sessions.
-- **🌐 Files** — standalone Files window. Left: cwd file tree (lazy-expanded, click to open). Right: `<webview>` preview for HTML/SVG/PNG/JPG/PDF/CSS, or textarea editor for everything else (`Ctrl/Cmd+S` saves). Address bar accepts `file://`, `http(s)://`, and `localhost:<port>`.
-- **🧠 Memory** — long-term memory panel. Toggle **Current channel / All** to scope. Each row shows the fact + source channel; inline **edit** + **delete** per row.
+### Skills / Commands / Agents / Plugins
+- Scans Claude Code's skills + commands + agents and Codex's skills. `/` menu or ⚡ button.
+- **Plugin system v2.2**: plugins can contribute tools, slash commands, hooks, and full-screen panels. Per-need injection (keyword matching saves ~60% tokens). Built-in plugins: office-suite, brainstorm (Excalidraw), math-practice, cpp-learning, low-altitude, and more.
+
+### Sidebar (left → right)
+- **＋** New session.
+- **📂 Workbench** — project cards grouped by cwd, showing recent activity + cost. "Context" button edits `KINET-CONTEXT.md`.
+- **📊 Dashboard** — independent window: real-time token usage, cost stats, engine distribution (all sessions aggregated).
+- **🌐 Files** — file browser + `<webview>` preview (HTML/SVG/PNG/JPG/PDF) + textarea editor. Multi-tab support. Address bar accepts `file://` / `http(s)://` / `localhost:<port>`.
+- **🏘️ Town** — game-style isometric visualization of remote nodes (other KinetAios instances on your network).
+- **🧠 Memory** — memory panel: current channel / all scope, inline edit/delete, provenance.
+- **🔌 Plugins** — plugin management: enable/disable, search, category cards.
 - **⚙️ Settings** — see below.
 
-### Main window tabs (chat / files / git / rules)
-- **Chat** — conversation with streaming, tool-step folds, left/right bubbles, live token counter.
-- **Files** — same engine as the 🌐 window, mounted inline on first click; follows the current session's cwd.
-- **Git** — `git status` (left) + `git log` (right). Click a changed file → side-by-side diff. Click a commit → unified `git show` (metadata and diff body styled separately).
-- **Rules** — edits cwd's `KINET.md` (project-level rules injected into the system prompt).
+### Main window tabs (Chat / Files / Git / Rules)
+- **Chat** — streaming output, collapsible tool steps, real-time token count, context inspector, screenshot, voice input.
+- **Files** — same as 🌐 sidebar, follows current session cwd.
+- **Git** — `git status` (left) + `git log` (right). Click file → side-by-side diff; click commit → formatted `git show`.
+- **Rules** — edit cwd's `KinetAios.md` (project-level rules, injected into system prompt).
+
+### Pipeline (cross-engine orchestration)
+Chain multiple stages, each specifying an engine + prompt. Previous stage's output auto-prepends to next stage's prompt. 2-min per-stage timeout with polling, fail-fast abort.
+
+### Session branching & handoff
+- **Branch**: fork from any turn — deep-copies turns/steps into a new session.
+- **Export/import session**: serialize full session state (turns + history + engine + model + cwd) for cross-machine handoff. Sensitive data (API keys, secrets) auto-redacted on export.
+- **Cross-session references**: link related sessions, visualized as a DAG task graph.
+
+### Context management (Direct engine)
+- **Context inspector**: view/edit the raw `directHistory` array per session (JSON textarea editor).
+- **Auto-compaction**: when history exceeds token budget, early turns are summarized by the LLM. Compaction events visualized in the UI (before/after token counts).
+- **Per-protocol token calibration**: token/char ratio tracked separately per API protocol (OpenAI vs Anthropic), preventing concurrent sessions from skewing each other's estimates.
+
+### Multimodal (Direct engine)
+- **Image input**: 📎 select/paste images → vision content parts → OpenAI `image_url` or Anthropic base64 format.
+- **Voice**: 🎤 record → Whisper transcription → fills composer. TTS via `speechSynthesis` (auto language detection, 2000-char limit).
+- **Screenshot**: 📸 overlay → drag-select region → cropped image injected into prompt.
+
+### Global search
+Overlay (`Ctrl/Cmd+K`) searches across all conversations — matches prompt text, answer text, and tool output.
 
 ### Settings (⚙️)
-Five sections:
-- **API** — provider, base URL, model, key. Presets for GLM / DeepSeek / OpenAI / Anthropic; **Test** before saving.
-- **Behavior** — shell approval mode, sandbox level, engine enable flags.
-- **Pricing** — input/output prices per model for cost calculation.
-- **Interface** — language (English / 简体中文 / 繁體中文 / 日本語), **theme (dark / light, live preview)**.
-- **Long-term memory** — **Export to JSON** (backup or migrate; structured `{version, exportedAt, memories[]}`), **Import from JSON** (accepts structured or plain array, dedupes by content, reports `imported/skipped`).
+- **API**: provider (OpenAI / Anthropic), base URL, model, key. GLM / DeepSeek / OpenAI / Anthropic presets. Balance check button (GLM Zhipu). Encrypted via safeStorage.
+- **Behavior**: shell approval mode, sandbox level, plan mode, CLI engine toggle, close behavior (quit / minimize / tray).
+- **Pricing**: per-model input/output prices for cost calculation.
+- **Interface**: language (English / 简体中文 / 繁體中文 / 日本語), theme (dark / light, live preview).
+- **Memory**: export/import JSON.
 
 ### Other
-- **Per-session model** (editable dropdown; OpenAI-compatible + Anthropic dual protocol).
-- **File attachments** — 📎 pick / drop multiple text files (large files read only the head); `@path` references files in cwd.
-- **AGENTS.md / CLAUDE.md / KINET.md** — rule files in cwd are auto-injected into the system prompt.
-- **Long-term memory** — each turn extracts durable facts about the user in the background, stored in SQLite, injected into the next turn's system prompt. Cross-engine (Direct / Claude Code / Codex) and cross-session by design.
-- **Tray + global hotkey** — `Ctrl/Cmd+Alt+Space` summons the quick panel (closing the window quits; the hotkey is active while the app runs).
+- **Per-session model** (editable dropdown, OpenAI-compatible + Anthropic dual-protocol).
+- **File attachments**: 📎 select/drag multiple text files (large files truncated), `@path` references.
+- **`KinetAios.md` / `AGENTS.md` / `CLAUDE.md`**: project rules auto-injected into system prompt.
+- **Tray + global hotkey** `Ctrl/Cmd+Alt+Space` → quick panel.
 - **Configurable brand** (`brand.json`), **encrypted API key storage** (safeStorage: macOS Keychain / Windows DPAPI).
+
+---
+
+## Tech stack
+
+- **Electron + TypeScript** — the main process runs the agent runtime; the renderer is native web UI.
+- **better-sqlite3** — SQLite + FTS5 (history / `recall_memory` full-text search + embedding-based semantic recall).
+- **No frontend framework** — renderer is pure vanilla TS + HTML/CSS, bundled with esbuild.
 
 ## Directory layout
 
@@ -126,17 +159,23 @@ KinetAiosWin/
       engines.ts            # Engine interface + Direct/ClaudeCode/Codex + cross-platform CLI spawn
       AgentLoop.ts          # ReAct loop (Direct) + history compaction + reactive trim
       glm.ts                # Provider + OpenAI/Anthropic SSE streaming + retry
-      tools.ts              # 10 tools + cross-platform shell (cmd.exe / sh) + dispatch_agent
+      tools.ts              # 12 built-in tools + cross-platform shell + dispatch_agent
       mcp.ts                # MCP client (scan + stdio + reconnect)
+      mcp-server.ts         # MCP server (HTTP+SSE, run_agent, token auth)
       skills.ts             # skills/commands/agents/plugin scan
-      brand.ts              # brand config reader
+      plugins.ts            # plugin loader (v2.2: tools/slashCommands/hooks/panels)
       store.ts              # better-sqlite3 + FTS5
-      settings.ts           # config (encrypted API key persistence, lang)
+      settings.ts           # config (encrypted API key persistence, lang, embeddings)
     preload/preload.ts      # the narrow API exposed via contextBridge
     renderer/
       index.html quick.html styles.css
-      app.ts                # dashboard logic
+      app.ts                # dashboard logic (chat, sidebar, tabs, context inspector)
       quick.ts              # quick panel logic
+      dashboard.ts          # cost/token dashboard window
+      arena.ts              # deep analytics dashboard
+      memory-graph.ts       # memory graph SVG visualization
+      town.ts               # Town view (remote node visualization)
+      files-pane.ts         # file browser + webview preview + editor
       markdown.ts           # mini markdown renderer
 ```
 
@@ -163,6 +202,5 @@ npm run dist         # current platform's default target
 
 ## Known constraints
 
-- **Closing the window quits** (no background persistence); the global hotkey only works while the app runs. If you want "close-to-tray + always-on hotkey", switch back to hide-on-close.
-- Codebase indexing / semantic retrieval, image multimodality, IDE plugins, etc. are on the `IMPROVEMENTS.md` roadmap (not done).
+- **Close behavior is configurable** (quit / minimize / tray); default is minimize. The global hotkey only works while the app runs.
 - Mac→Windows cross-build of the native module is unreliable — build Windows installers on a Windows machine or via `windows-latest` GitHub Actions.

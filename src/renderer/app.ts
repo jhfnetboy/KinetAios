@@ -45,7 +45,7 @@ let disabledPluginsCache: string[] = [];
 // 远程节点缓存(从 main 进程拉取,含在线状态和工具数) / Remote node cache from main process
 let remoteNodesCache: Array<{ name: string; url?: string; online: boolean; toolCount: number }> = [];
 let filesController: FilesPaneController | null = null; // 「文件」tab 懒挂载
-let activeTab: 'chat' | 'files' | 'git' | 'rules' = 'chat';
+let activeTab: 'chat' | 'files' | 'git' | 'rules' | 'preview' = 'chat';
 // git tab 状态:最近一次 snapshot + 当前右侧视图(history 默认 / 点文件或提交切到 diff)。
 // view.contentHTML 是已转义 + 按行包好 .d-add/.d-del/.d-hunk 的安全 HTML。
 let gitState: { snapshot?: GitSnapshot; view: { kind: 'history' } | { kind: 'diff'; title: string; contentHTML: string }; lastCwd: string } = {
@@ -176,6 +176,14 @@ function applyI18nDOM(): void {
     if (convId === selectedId) {
       if (ev.type === 'token') streamAppend(ev.text);
       else renderMain();
+      // Artifact 检测:done 时最终检测一次(流式期间已有防抖检测)
+      if (ev.type === 'done') {
+        const html = detectArtifact(conv.turns[conv.turns.length - 1]?.answer ?? '');
+        if (html) {
+          updatePreview(html);
+          showPreviewTab();
+        }
+      }
     }
     if (ev.type !== 'token') {
       renderSidebar();
@@ -348,17 +356,19 @@ async function deleteConv(id: string) {
 
 // ---------- main pane ----------
 // 聊天 tab 切换(对话 / 文件 / Git / 规则)。文件 tab 首次点才挂 mountFilesPane;切会话后切回任一 tab 都同步 cwd。
-function showTab(tab: 'chat' | 'files' | 'git' | 'rules'): void {
+function showTab(tab: 'chat' | 'files' | 'git' | 'rules' | 'preview'): void {
   if (activeTab === tab) return;
   activeTab = tab;
   document.getElementById('tab-chat')!.classList.toggle('active', tab === 'chat');
   document.getElementById('tab-files')!.classList.toggle('active', tab === 'files');
   document.getElementById('tab-git')!.classList.toggle('active', tab === 'git');
   document.getElementById('tab-rules')!.classList.toggle('active', tab === 'rules');
+  document.getElementById('tab-preview')!.classList.toggle('active', tab === 'preview');
   document.getElementById('chat-content')!.hidden = tab !== 'chat';
   document.getElementById('chat-files-pane')!.hidden = tab !== 'files';
   document.getElementById('chat-git-pane')!.hidden = tab !== 'git';
   document.getElementById('chat-rules-pane')!.hidden = tab !== 'rules';
+  document.getElementById('chat-preview-pane')!.hidden = tab !== 'preview';
   if (tab === 'files') {
     if (!filesController) {
       const pane = document.getElementById('chat-files-pane')!;
@@ -711,6 +721,18 @@ function renderMain() {
   if (activeTab === 'git' && conv.cwd !== gitState.lastCwd) void refreshGit(conv.cwd);
   // rules tab:cwd 变了就重载 KINET.md。
   if (activeTab === 'rules' && conv.cwd !== rulesCwd) void loadRules(conv.cwd);
+  // 切会话时重新检测当前 turn 是否有 artifact,更新预览面板状态
+  const lastTurn = conv.turns[conv.turns.length - 1];
+  const artifactHtml = lastTurn ? detectArtifact(lastTurn.answer) : null;
+  const tabPreview = document.getElementById('tab-preview');
+  if (artifactHtml) {
+    if (tabPreview) tabPreview.removeAttribute('hidden');
+    updatePreview(artifactHtml);
+  } else {
+    if (tabPreview) { tabPreview.setAttribute('hidden', ''); tabPreview.classList.remove('has-artifact'); }
+    currentArtifactHtml = null;
+    if (activeTab === 'preview') showPreviewEmpty();
+  }
 }
 
 function renderHead(conv: Conversation | undefined) {
@@ -915,6 +937,140 @@ function streamAppend(text: string) {
     if (el.querySelector('.typing')) el.textContent = ''; // 首个 token:清掉思考三点
     el.appendChild(document.createTextNode(text));
     scrollDown();
+    // 流式期间也检测 artifact(token 级增量检测,让用户边看边预览)
+    scheduleArtifactCheck();
+  }
+}
+
+// ── Artifact 预览(Antikythera):检测 AI 输出中的 HTML/SVG 代码块 → 沙箱 iframe 实时渲染 ──
+// Detection: scan assistant's latest answer for ```html / ```svg fenced code blocks.
+// When found, extract the code → inject into sandboxed iframe (srcdoc) → auto-open preview tab.
+// Throttled via debounce to avoid re-rendering iframe on every token.
+let artifactDebounce: ReturnType<typeof setTimeout> | null = null;
+let currentArtifactHtml: string | null = null; // 当前预览的 HTML 内容(给刷新/打开按钮用)
+let artifactAutoSwitch = true; // 检测到 artifact 时自动切到预览 tab(用户手动切回后不再自动切)
+
+/** 从 markdown 文本中提取 HTML/SVG artifact。返回完整 HTML 文档(可直接塞 iframe srcdoc)。 */
+function detectArtifact(md: string): string | null {
+  if (!md || md.length < 30) return null;
+  // 匹配 ```html ... ``` 或 ```svg ... ``` 代码块(容错:可能没有 language tag)
+  // 也匹配 <!DOCTYPE html> 开头的裸 HTML(不在代码块里)
+  const codeBlockRe = /```(?:html|svg|htm)\s*\n([\s\S]*?)```/gi;
+  const matches = [...md.matchAll(codeBlockRe)];
+  if (matches.length > 0) {
+    // 取最长的那个(通常是主内容,而非示例片段)
+    const longest = matches.reduce((a, b) => b[1].length > a[1].length ? b : a);
+    return wrapArtifactHtml(longest[1].trim());
+  }
+  // 检测裸 HTML 文档(<!DOCTYPE html> 或 <html>...</html>)
+  const docRe = /<!DOCTYPE\s+html[\s\S]*?<\/html>/i;
+  const docMatch = md.match(docRe);
+  if (docMatch) return docMatch[0];
+  // 检测裸 <svg>...</svg>(完整 SVG,非内联小图标)
+  const svgRe = /<svg[\s\S]*?<\/svg>/gi;
+  const svgs = [...md.matchAll(svgRe)];
+  if (svgs.length === 1 && svgs[0][0].length > 200) {
+    return wrapArtifactHtml(svgs[0][0]);
+  }
+  return null;
+}
+
+/** 把片段包装成完整 HTML 文档(如果没有 <html> 包裹的话)。 */
+function wrapArtifactHtml(fragment: string): string {
+  // 已经是完整文档 → 直接返回
+  if (/^\s*<!DOCTYPE/i.test(fragment) || /^\s*<html/i.test(fragment)) return fragment;
+  // 是 <svg> → 包一层最小 HTML(让 iframe 能渲染 + 居中)
+  if (/^\s*<svg/i.test(fragment)) {
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+      body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#fff}
+      svg{max-width:100%;height:auto}
+    </style></head><body>${fragment}</body></html>`;
+  }
+  // 通用 HTML 片段 → 包一层基础结构
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;padding:16px;font-family:system-ui,sans-serif}</style></head><body>${fragment}</body></html>`;
+}
+
+/** 防抖检测:流式 token 到来时每 500ms 检查一次(避免每个 token 都检测)。 */
+function scheduleArtifactCheck(): void {
+  if (artifactDebounce) return; // 已有待执行的检测
+  artifactDebounce = setTimeout(() => {
+    artifactDebounce = null;
+    checkArtifact();
+  }, 600);
+}
+
+/** 检测当前会话最后一个 turn 的 answer 是否包含 artifact,如有则更新预览。 */
+function checkArtifact(): void {
+  const conv = selectedId ? convs.get(selectedId) : undefined;
+  if (!conv) return;
+  const lastTurn = conv.turns[conv.turns.length - 1];
+  if (!lastTurn) return;
+  const html = detectArtifact(lastTurn.answer);
+  if (html) {
+    updatePreview(html);
+    showPreviewTab();
+  }
+}
+
+/** 更新预览 iframe 内容。 */
+function updatePreview(html: string): void {
+  currentArtifactHtml = html;
+  const iframe = document.getElementById('preview-iframe') as HTMLIFrameElement | null;
+  if (!iframe) return;
+  iframe.srcdoc = html;
+  // 移除空状态提示(如有)
+  const body = document.getElementById('preview-body');
+  if (body?.querySelector('.preview-empty')) {
+    // 恢复 iframe(被空状态替换后)
+    body.innerHTML = '<iframe id="preview-iframe" sandbox="allow-scripts allow-popups allow-forms allow-modals"></iframe>';
+    (document.getElementById('preview-iframe') as HTMLIFrameElement).srcdoc = html;
+  }
+}
+
+/** 显示预览 tab 按钮 + 自动切换到预览面板(首次检测到 artifact 时)。 */
+function showPreviewTab(): void {
+  const tabBtn = document.getElementById('tab-preview');
+  if (!tabBtn) return;
+  if (tabBtn.hasAttribute('hidden')) {
+    tabBtn.removeAttribute('hidden');
+  }
+  // 高亮提示(闪烁圆点)
+  tabBtn.classList.add('has-artifact');
+  // 自动切到预览(仅在用户当前在对话 tab 且 artifactAutoSwitch 未被关闭时)
+  if (artifactAutoSwitch && activeTab === 'chat') {
+    // 不自动切!让用户看到 AI 正在输出。只在 done 时切。
+    // 改为:显示 tab 按钮 + 高亮,用户自己决定是否点过去。
+  }
+}
+
+/** 显示预览空状态(没有检测到 artifact 时)。 */
+function showPreviewEmpty(): void {
+  const body = document.getElementById('preview-body');
+  if (!body) return;
+  body.innerHTML = `<div class="preview-empty">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>
+    </svg>
+    <span class="pe-hint">等待 AI 生成 HTML/SVG 内容…</span>
+    <span class="pe-sub">让 AI「画一个网页 / 做 SVG 图表 / 写交互式组件」,结果会在这里实时预览</span>
+  </div>`;
+  currentArtifactHtml = null;
+}
+
+/** 打开预览面板(tab 按钮 onclick + 自动切换用)。 */
+function openPreviewPane(): void {
+  showTab('preview');
+  document.getElementById('tab-preview')!.classList.remove('has-artifact');
+  // 如果当前没有 artifact 内容,显示空状态
+  if (!currentArtifactHtml) {
+    // 尝试检测当前 turn
+    const conv = selectedId ? convs.get(selectedId) : undefined;
+    const lastTurn = conv?.turns[conv.turns.length - 1];
+    if (lastTurn) {
+      const html = detectArtifact(lastTurn.answer);
+      if (html) { updatePreview(html); return; }
+    }
+    showPreviewEmpty();
   }
 }
 
@@ -1790,6 +1946,28 @@ function closeMoreMenu() { document.getElementById('sb-more-menu')?.classList.re
     if (cwd) void refreshGit(cwd);
   };
   document.getElementById('tab-rules')!.onclick = () => showTab('rules');
+  // ── Artifact 预览 tab + 控制按钮 ──
+  document.getElementById('tab-preview')!.onclick = () => openPreviewPane();
+  document.getElementById('btn-preview-refresh')!.onclick = () => {
+    const html = currentArtifactHtml;
+    if (html) {
+      const iframe = document.getElementById('preview-iframe') as HTMLIFrameElement | null;
+      if (iframe) { iframe.srcdoc = ''; requestAnimationFrame(() => { iframe.srcdoc = html; }); }
+    }
+  };
+  document.getElementById('btn-preview-open')!.onclick = () => {
+    // 把 artifact HTML 写到临时文件,用系统浏览器打开
+    if (currentArtifactHtml) {
+      const blob = new Blob([currentArtifactHtml], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    }
+  };
+  document.getElementById('btn-preview-close')!.onclick = () => {
+    showTab('chat');
+    artifactAutoSwitch = true;
+  };
   document.getElementById('btn-rules-save')!.onclick = () => void saveRules();
   document.getElementById('btn-rules-reload')!.onclick = () => {
     if (rulesCwd) void loadRules(rulesCwd);

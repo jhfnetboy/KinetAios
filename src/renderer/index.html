@@ -63,6 +63,7 @@
               <button class="cht" id="tab-files" data-i18n="tabs.files">文件</button>
               <button class="cht" id="tab-git" data-i18n="tabs.git">Git</button>
               <button class="cht" id="tab-rules" data-i18n="tabs.rules">规则</button>
+              <button class="cht" id="tab-preview" data-i18n="tabs.preview" title="Artifact 预览" hidden>预览</button>
             </span>
           </div>
           <div class="ch-row ch-config">
@@ -132,9 +133,23 @@
           </div>
           <div class="rules-editor-host" id="rules-editor-host"></div>
         </div>
+        <!-- Artifact 预览面板:检测 AI 输出中的 HTML/SVG 代码块,在沙箱 iframe 中实时渲染。
+             – 预览按钮仅在检测到 artifact 时显示(hidden → 可见)
+             – iframe 用 sandbox 属性隔离(allow-scripts 但不允许同源父页访问)
+             – 流式更新:每次 token 事件触发重新检测 + 更新 -->
+        <div id="chat-preview-pane" class="chat-preview-pane" hidden>
+          <div class="preview-head">
+            <span class="preview-title">⚡ Artifact 预览</span>
+            <span class="preview-spacer"></span>
+            <button class="ghost" id="btn-preview-refresh" title="刷新预览"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M20.5 9A9 9 0 005.6 5.6L1 10M3.5 15a9 9 0 0014.9 3.4L23 14"/></svg></button>
+            <button class="ghost" id="btn-preview-open" title="在浏览器中打开"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></button>
+            <button class="ghost" id="btn-preview-close" title="关闭预览"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+          </div>
+          <div class="preview-body" id="preview-body">
+            <iframe id="preview-iframe" sandbox="allow-scripts allow-popups allow-forms allow-modals"></iframe>
+          </div>
+        </div>
       </div>
-
-      <!-- settings view -->
       <div id="settings-view" class="view">
         <div id="settings"></div>
       </div>

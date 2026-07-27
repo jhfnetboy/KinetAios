@@ -30,14 +30,23 @@ See [[Getting-Started]] for details.
 | Feature | Entry | Wiki page |
 |---|---|---|
 | Three switchable engines (Direct / Claude Code / Codex) | Session header engine selector | [[Engines]] |
-| Direct engine internals | — | [[Direct-Engine]] |
-| 10 built-in tools + MCP | Auto-injected | [[Tools-and-MCP]] |
-| Long-term memory extraction & injection | 🧠 button | [[Long-Term-Memory]] |
+| Direct engine internals (ReAct, compaction, calibration) | — | [[Direct-Engine]] |
+| 12 built-in tools + web_search/web_fetch | Auto-injected | [[Tools-and-MCP]] |
+| MCP client + MCP server (remote agent) | 🔌 button / config | [[Tools-and-MCP]] |
+| Long-term memory + memory graph | 🧠 button | [[Long-Term-Memory]] |
+| Plugin system v2.2 (tools/panels/hooks) | 🔌 Plugins button | [[Plugin-System]] |
 | Skills / Commands / Agents | `/` or ⚡ | [[Skills]] |
-| File browser + built-in browser + editor | 🌐 button / "Files" tab | [[Files-and-Preview]] |
+| Pipeline (cross-engine orchestration) | Programmatic | [[Pipeline]] |
+| Session branching + export/import | Context menu / MCP | [[Session-Management]] |
+| Context inspector + compaction viz | Chat header inspector button | [[Direct-Engine]] |
+| File browser + multi-tab preview | 🌐 button / "Files" tab | [[Files-and-Preview]] |
 | Git status / history / file diff / commit show | "Git" tab | [[Git-Integration]] |
 | Project rules + project context | "Rules" tab / Workbench "Context" | [[Rules-and-Context]] |
 | Workbench (project card overview) | 📂 button | [[Workbench]] |
+| Dashboard (cost/token analytics) | 📊 button | [[Dashboard]] |
+| Town view (remote node visualization) | 🏘️ button | [[Town]] |
+| Multimodal (image + voice + screenshot) | 📎 / 🎤 / 📸 in chat | [[Multimodal]] |
+| Global search (all conversations) | `Ctrl/Cmd+K` | [[Global-Search]] |
 | Settings (API / Behavior / Pricing / Interface / Memory) | ⚙ button | [[Settings]] |
 | Global hotkey quick panel | `Ctrl/Cmd+Alt+Space` | [[Global-Hotkey]] |
 | Four-language switch | ⚙ → Interface → Language | [[i18n]] |
