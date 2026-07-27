@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>销售数据看板</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    padding: 24px;
+  }
+  h1 { font-size: 22px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 20px;
+    transition: transform .2s, border-color .2s;
+  }
+  .card:hover { transform: translateY(-2px); border-color: #58a6ff; }
+  .card .label { font-size: 12px; color: #8b949e; margin-bottom: 8px; }
+  .card .value { font-size: 28px; font-weight: 700; }
+  .card .delta { font-size: 12px; margin-top: 6px; }
+  .up { color: #3fb950; }
+  .down { color: #f85149; }
+  .chart-area {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .chart-title { font-size: 14px; color: #8b949e; margin-bottom: 16px; }
+  canvas { width: 100%; height: 260px; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+  .tabs button {
+    background: #21262d; color: #8b949e; border: 1px solid #30363d;
+    border-radius: 6px; padding: 6px 16px; cursor: pointer; font-size: 13px;
+    transition: all .2s;
+  }
+  .tabs button.active { background: #1f6feb; color: #fff; border-color: #1f6feb; }
+</style>
+</head>
+<body>
+
+<h1>📊 销售数据看板 <span style="font-size:12px;color:#8b949e;font-weight:400">2024 Q4</span></h1>
+
+<div class="grid">
+  <div class="card">
+    <div class="label">总营收</div>
+    <div class="value">¥1,284K</div>
+    <div class="delta up">↑ 23.5%</div>
+  </div>
+  <div class="card">
+    <div class="label">订单数</div>
+    <div class="value">3,842</div>
+    <div class="delta up">↑ 12.8%</div>
+  </div>
+  <div class="card">
+    <div class="label">转化率</div>
+    <div class="value">4.7%</div>
+    <div class="delta down">↓ 0.3%</div>
+  </div>
+  <div class="card">
+    <div class="label">客单价</div>
+    <div class="value">¥334</div>
+    <div class="delta up">↑ 9.6%</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="active" data-range="7">近 7 天</button>
+  <button data-range="30">近 30 天</button>
+</div>
+
+<div class="chart-area">
+  <div class="chart-title">营收趋势</div>
+  <canvas id="chart"></canvas>
+</div>
+
+<script>
+const data7  = [42, 58, 35, 72, 64, 88, 95];
+const data30 = [30,45,38,52,48,61,55,67,72,58,63,78,71,82,88,75,90,85,92,98,87,95,102,96,110,105,118,125,115,128];
+
+let current = data7;
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+}
+
+function draw() {
+  const rect = canvas.getBoundingClientRect();
+  const w = rect.width, h = rect.height;
+  const pad = { l: 40, r: 16, t: 16, b: 28 };
+  const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
+
+  ctx.clearRect(0, 0, w, h);
+  const max = Math.max(...current) * 1.15;
+
+  // 网格线
+  ctx.strokeStyle = '#21262d';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + ch * i / 4;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+    ctx.fillStyle = '#484f58';
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'right';
+    ctx.fillText('¥' + Math.round(max * (4 - i) / 4) + 'K', pad.l - 8, y + 4);
+  }
+
+  // 渐变填充
+  const grad = ctx.createLinearGradient(0, pad.t, 0, h - pad.b);
+  grad.addColorStop(0, 'rgba(31,111,235,0.4)');
+  grad.addColorStop(1, 'rgba(31,111,235,0)');
+
+  const step = cw / (current.length - 1);
+  // 填充区域
+  ctx.beginPath();
+  ctx.moveTo(pad.l, h - pad.b);
+  current.forEach((v, i) => {
+    const x = pad.l + i * step;
+    const y = pad.t + ch * (1 - v / max);
+    if (i === 0) ctx.lineTo(x, y);
+    else {
+      const px = pad.l + (i - 1) * step;
+      const py = pad.t + ch * (1 - current[i-1] / max);
+      ctx.quadraticCurveTo((px + x) / 2, (py + y) / 2, x, y);
+    }
+  });
+  ctx.lineTo(pad.l + (current.length - 1) * step, h - pad.b);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // 线条
+  ctx.beginPath();
+  current.forEach((v, i) => {
+    const x = pad.l + i * step;
+    const y = pad.t + ch * (1 - v / max);
+    if (i === 0) ctx.moveTo(x, y);
+    else {
+      const px = pad.l + (i - 1) * step;
+      const py = pad.t + ch * (1 - current[i-1] / max);
+      ctx.quadraticCurveTo((px + x) / 2, (py + y) / 2, x, y);
+    }
+  });
+  ctx.strokeStyle = '#58a6ff';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // 数据点
+  current.forEach((v, i) => {
+    const x = pad.l + i * step;
+    const y = pad.t + ch * (1 - v / max);
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#0d1117';
+    ctx.fill();
+    ctx.strokeStyle = '#58a6ff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+}
+
+resize();
+draw();
+window.addEventListener('resize', () => { resize(); draw(); });
+
+// tab 切换
+document.querySelectorAll('.tabs button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    current = +btn.dataset.range === 7 ? data7 : data30;
+    draw();
+  };
+});
+</script>
+</body>
+</html>

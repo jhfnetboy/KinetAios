@@ -950,11 +950,10 @@ let artifactDebounce: ReturnType<typeof setTimeout> | null = null;
 let currentArtifactHtml: string | null = null; // 当前预览的 HTML 内容(给刷新/打开按钮用)
 let artifactAutoSwitch = true; // 检测到 artifact 时自动切到预览 tab(用户手动切回后不再自动切)
 
-/** 从 markdown 文本中提取 HTML/SVG artifact。返回完整 HTML 文档(可直接塞 iframe srcdoc)。 */
+/** 从 markdown 文本中提取 HTML/SVG artifact。返回完整 HTML 文档(可直接塞 iframe)。 */
 function detectArtifact(md: string): string | null {
   if (!md || md.length < 30) return null;
-  // 匹配 ```html ... ``` 或 ```svg ... ``` 代码块(容错:可能没有 language tag)
-  // 也匹配 <!DOCTYPE html> 开头的裸 HTML(不在代码块里)
+  // 匹配 ```html ... ``` 或 ```svg ... ``` 或 ```htm ... ``` 代码块
   const codeBlockRe = /```(?:html|svg|htm)\s*\n([\s\S]*?)```/gi;
   const matches = [...md.matchAll(codeBlockRe)];
   if (matches.length > 0) {
@@ -966,6 +965,13 @@ function detectArtifact(md: string): string | null {
   const docRe = /<!DOCTYPE\s+html[\s\S]*?<\/html>/i;
   const docMatch = md.match(docRe);
   if (docMatch) return docMatch[0];
+  // 检测无 language tag 的代码块中包含完整 HTML(如 ```\n<!DOCTYPE html>...```)
+  const genericBlockRe = /```\s*\n([\s\S]*?)```/g;
+  const genericMatches = [...md.matchAll(genericBlockRe)];
+  for (const m of genericMatches) {
+    const code = m[1].trim();
+    if (/^<!DOCTYPE\s+html/i.test(code) || /^<html/i.test(code)) return wrapArtifactHtml(code);
+  }
   // 检测裸 <svg>...</svg>(完整 SVG,非内联小图标)
   const svgRe = /<svg[\s\S]*?<\/svg>/gi;
   const svgs = [...md.matchAll(svgRe)];
@@ -1012,27 +1018,32 @@ function checkArtifact(): void {
   }
 }
 
-/** 更新预览 iframe 内容。 */
+/** 更新预览 iframe 内容。用 blob: URL 而非 srcdoc(兼容性更好,绕过部分 CSP 限制)。 */
 function updatePreview(html: string): void {
   currentArtifactHtml = html;
-  const iframe = document.getElementById('preview-iframe') as HTMLIFrameElement | null;
-  if (!iframe) return;
-  iframe.srcdoc = html;
-  // 移除空状态提示(如有)
   const body = document.getElementById('preview-body');
-  if (body?.querySelector('.preview-empty')) {
-    // 恢复 iframe(被空状态替换后)
+  if (!body) return;
+  // 如果当前是空状态或 iframe 被移除了,先恢复 iframe
+  let iframe = document.getElementById('preview-iframe') as HTMLIFrameElement | null;
+  if (!iframe) {
     body.innerHTML = '<iframe id="preview-iframe" sandbox="allow-scripts allow-popups allow-forms allow-modals"></iframe>';
-    (document.getElementById('preview-iframe') as HTMLIFrameElement).srcdoc = html;
+    iframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
   }
+  // 用 blob: URL 加载(比 srcdoc 兼容性好,Electron 不一定支持 srcdoc)
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  // 清理上一个 blob URL(避免内存泄漏)
+  if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+  iframe.dataset.blobUrl = url;
+  iframe.src = url;
 }
 
 /** 显示预览 tab 按钮 + 自动切换到预览面板(首次检测到 artifact 时)。 */
 function showPreviewTab(): void {
   const tabBtn = document.getElementById('tab-preview');
   if (!tabBtn) return;
-  // 高亮提示(闪烁圆点)
-  tabBtn.classList.add('has-artifact');
+  tabBtn.removeAttribute('hidden');  // 首次检测到 artifact 时显示 tab 按钮
+  tabBtn.classList.add('has-artifact'); // 高亮提示(闪烁圆点)
 }
 
 /** 显示预览空状态(没有检测到 artifact 时)。 */
@@ -1944,7 +1955,13 @@ function closeMoreMenu() { document.getElementById('sb-more-menu')?.classList.re
     const html = currentArtifactHtml;
     if (html) {
       const iframe = document.getElementById('preview-iframe') as HTMLIFrameElement | null;
-      if (iframe) { iframe.srcdoc = ''; requestAnimationFrame(() => { iframe.srcdoc = html; }); }
+      if (iframe) {
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
+        iframe.dataset.blobUrl = url;
+        iframe.src = url;
+      }
     }
   };
   document.getElementById('btn-preview-open')!.onclick = () => {
