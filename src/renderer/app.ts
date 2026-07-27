@@ -726,10 +726,10 @@ function renderMain() {
   const artifactHtml = lastTurn ? detectArtifact(lastTurn.answer) : null;
   const tabPreview = document.getElementById('tab-preview');
   if (artifactHtml) {
-    if (tabPreview) tabPreview.removeAttribute('hidden');
+    if (tabPreview) tabPreview.classList.add('has-artifact');
     updatePreview(artifactHtml);
   } else {
-    if (tabPreview) { tabPreview.setAttribute('hidden', ''); tabPreview.classList.remove('has-artifact'); }
+    if (tabPreview) tabPreview.classList.remove('has-artifact');
     currentArtifactHtml = null;
     if (activeTab === 'preview') showPreviewEmpty();
   }
@@ -1031,16 +1031,8 @@ function updatePreview(html: string): void {
 function showPreviewTab(): void {
   const tabBtn = document.getElementById('tab-preview');
   if (!tabBtn) return;
-  if (tabBtn.hasAttribute('hidden')) {
-    tabBtn.removeAttribute('hidden');
-  }
   // 高亮提示(闪烁圆点)
   tabBtn.classList.add('has-artifact');
-  // 自动切到预览(仅在用户当前在对话 tab 且 artifactAutoSwitch 未被关闭时)
-  if (artifactAutoSwitch && activeTab === 'chat') {
-    // 不自动切!让用户看到 AI 正在输出。只在 done 时切。
-    // 改为:显示 tab 按钮 + 高亮,用户自己决定是否点过去。
-  }
 }
 
 /** 显示预览空状态(没有检测到 artifact 时)。 */
