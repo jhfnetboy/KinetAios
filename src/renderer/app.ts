@@ -784,6 +784,17 @@ function renderHead(conv: Conversation | undefined) {
   status.textContent = conv.status === 'running' && conv.statusNote ? conv.statusNote : '';
   sendBtn.textContent = conv.status === 'running' ? tr('common.stop') : tr('common.send');
   sendBtn.classList.toggle('stop', conv.status === 'running');
+  // 会话目标条:有 goal 时显示
+  const goalBar = document.getElementById('goal-bar');
+  const goalText = document.getElementById('goal-text');
+  if (goalBar && goalText) {
+    if (conv.goal) {
+      goalText.textContent = conv.goal;
+      goalBar.style.display = '';
+    } else {
+      goalBar.style.display = 'none';
+    }
+  }
 }
 
 // Rebuild the engine dropdown from the toggle. Direct is always present; Claude/Codex only when
@@ -2169,6 +2180,8 @@ function closeMoreMenu() { document.getElementById('sb-more-menu')?.classList.re
   };
   document.getElementById('btn-rules-gen')!.onclick = () => openRuleGenerator();
   document.getElementById('btn-clear')!.onclick = () => selectedId && api.clearConversation(selectedId);
+  // 清除目标:发送 /goal(无参数)清除
+  document.getElementById('btn-goal-clear')!.onclick = () => selectedId && void api.send(selectedId, '/goal');
   document.getElementById('btn-del')!.onclick = () => selectedId && api.deleteConversation(selectedId);
   document.getElementById('btn-ctx-inspector')!.onclick = () => selectedId && void openCtxInspector(selectedId);
   document.getElementById('ctx-insp-close')!.onclick = closeCtxInspector;

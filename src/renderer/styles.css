@@ -593,6 +593,11 @@ a { color: var(--accent); }
 .ch-config .model { flex: 0 1 170px; min-width: 110px; font-size: 11px; padding: 4px 8px; font-family: ui-monospace, "Cascadia Code", monospace; color: var(--text-dim); }
 .ch-config .cwd { flex: 1 1 220px; min-width: 120px; font-size: 11px; color: var(--text-faint); font-family: ui-monospace, "Cascadia Code", monospace; padding: 4px 8px; }
 .ch-config .cwd-pick { flex: 0 0 auto; padding: 4px 8px; }
+.ch-goal { align-items: center; gap: 6px; padding: 4px 10px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; }
+.ch-goal .goal-icon { flex: 0 0 auto; }
+.ch-goal .goal-text { flex: 1; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ch-goal #btn-goal-clear { flex: 0 0 auto; padding: 0 4px; font-size: 11px; color: var(--text-dim); border: none; background: none; cursor: pointer; }
+.ch-goal #btn-goal-clear:hover { color: var(--danger); }
 .stat { font-size: 11px; color: var(--text-dim); }
 
 /* turns */

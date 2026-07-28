@@ -62,6 +62,7 @@ export function initStore(): void {
     ['model', 'TEXT'],
     ['branch_info', 'TEXT'],   // JSON: BranchInfo(branchFrom 的来源信息),null = 原创会话
     ['pipeline_id', 'TEXT'],   // pipeline 创建的会话标记,null = 非 pipeline
+    ['goal', 'TEXT'],          // 会话目标(/goal 设置,持续注入 systemPrompt),null = 无目标
   ] as const) {
     if (!hasColumn('conversations', col)) db.exec(`ALTER TABLE conversations ADD COLUMN ${col} ${def};`);
   }
@@ -104,18 +105,20 @@ type ConvRow = {
   model: string | null;
   branch_info: string | null;
   pipeline_id: string | null;
+  goal: string | null;
 };
 
 export function saveConversation(c: Conversation): void {
   db.prepare(
-    `INSERT INTO conversations(id, engine, cwd, created_at, custom_title, engine_session_id, model, branch_info, pipeline_id)
-     VALUES(?,?,?,?,?,?,?,?,?)
+    `INSERT INTO conversations(id, engine, cwd, created_at, custom_title, engine_session_id, model, branch_info, pipeline_id, goal)
+     VALUES(?,?,?,?,?,?,?,?,?,?)
      ON CONFLICT(id) DO UPDATE SET engine=excluded.engine, cwd=excluded.cwd,
        custom_title=excluded.custom_title, engine_session_id=excluded.engine_session_id, model=excluded.model,
-       branch_info=excluded.branch_info, pipeline_id=excluded.pipeline_id;`,
+       branch_info=excluded.branch_info, pipeline_id=excluded.pipeline_id, goal=excluded.goal;`,
   ).run(c.id, c.engine, c.cwd, c.createdAt, c.customTitle, c.engineSessionId, c.model,
     c.branchInfo ? JSON.stringify(c.branchInfo) : null,
-    c.pipelineId ?? null);
+    c.pipelineId ?? null,
+    c.goal ?? null);
 }
 
 export function updateConversationMeta(c: Conversation): void {
@@ -179,7 +182,7 @@ function parseTurn(data: string): Turn {
 export function loadConversations(): Conversation[] {
   const rows = db
     .prepare(
-      'SELECT id, engine, cwd, created_at, custom_title, direct_history, engine_session_id, model, branch_info, pipeline_id FROM conversations ORDER BY created_at DESC;',
+      'SELECT id, engine, cwd, created_at, custom_title, direct_history, engine_session_id, model, branch_info, pipeline_id, goal FROM conversations ORDER BY created_at DESC;',
     )
     .all() as ConvRow[];
   return rows.map((r) => {
@@ -212,6 +215,7 @@ export function loadConversations(): Conversation[] {
       // 恢复分支信息(branchFrom 创建的关系)和 pipeline 标记 —— 重启后任务图边不丢。
       branchInfo: r.branch_info ? (() => { try { return JSON.parse(r.branch_info); } catch { return null; } })() : null,
       pipelineId: r.pipeline_id ?? null,
+      goal: r.goal ?? null,
     };
     return conv;
   });

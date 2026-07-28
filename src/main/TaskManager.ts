@@ -186,6 +186,21 @@ export class TaskManager {
       return;
     }
 
+    // /goal <text>:设置会话目标(持续注入 systemPrompt,引导整个会话)。不发给引擎。
+    // /goal(无参数):清除目标。UI 会收到 conversation 事件后刷新。
+    const goalMatch = prompt.match(/^\/goal(?:\s+(.*))?$/i);
+    if (goalMatch) {
+      const goalText = goalMatch[1]?.trim() || null;
+      conv.goal = goalText;
+      store.saveConversation(conv);
+      this.emit.emitEvent(id, {
+        type: 'status',
+        text: goalText ? `🎯 目标已设置: ${goalText}` : '🎯 目标已清除',
+      });
+      this.emit.emitConversation(conv);
+      return;
+    }
+
     store.appendMessage('user', prompt);
     conv.turns.push(newTurn(prompt));
     conv.status = 'running';

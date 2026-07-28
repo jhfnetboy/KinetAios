@@ -258,6 +258,7 @@ export type Conversation = {
   engine: EngineKind;
   model: string; // Direct 引擎用的模型,每会话独立;claudeCode/codex 由各自 CLI 配置
   profileId?: string | null; // 绑定的模型配置档(切换 profile 时更新;null = 用全局 settings)
+  goal?: string | null; // 会话目标(通过 /goal 设置,持续注入 systemPrompt 直到清除)
   cwd: string;
   createdAt: number;
   customTitle: string | null;
