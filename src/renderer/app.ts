@@ -3557,6 +3557,8 @@ async function fillProfileSelect(): Promise<any[]> {
   sel.innerHTML = '<option value="">(默认配置)</option>' +
     profiles.map((p: any) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
   sel.style.display = profiles.length > 0 ? '' : 'none';
+  // 填充完成后重新渲染 head,确保 model-input 和 profile-select 的显隐同步(修复启动竞态)
+  renderHead(selectedId ? convs.get(selectedId) : undefined);
   return profiles;
 }
 

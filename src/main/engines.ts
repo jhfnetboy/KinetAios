@@ -106,6 +106,7 @@ class DirectEngine implements Engine {
     // config; otherwise fall back to global settings + per-conversation model override.
     const base = snapshot(conv.profileId);
     const snap = { ...base, model: conv.model || base.model };
+    console.log('[DirectEngine] profileId=%s baseURL=%s model=%s proto=%s', conv.profileId, snap.baseURL, snap.model, snap.apiProtocol);
     const provider = currentProvider(snap);
     // ctx.spawn:dispatch_agent 起子任务 —— 复用 runAgentLoop,独立 history、只读工具、maxTurns 限 8。
     // 子任务事件只转发 cost(也花钱)+ tool(带前缀供 UI 观感),吞掉 token 防刷屏。
