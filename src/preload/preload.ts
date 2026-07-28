@@ -19,6 +19,7 @@ const api: KinetAPI = {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (s) => ipcRenderer.invoke('save-settings', s),
   testConnection: (s?) => ipcRenderer.invoke('test-connection', s),
+  listLocalModels: (baseURL?) => ipcRenderer.invoke('list-local-models', baseURL),
   getBalance: () => ipcRenderer.invoke('get-balance'),
   listSkills: () => ipcRenderer.invoke('list-skills'),
   listMcp: () => ipcRenderer.invoke('list-mcp'),

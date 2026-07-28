@@ -1138,7 +1138,7 @@ async function showSettings() {
         </select></div>
         <div class="field"><label>API Key</label><input id="s-key" type="password" value="${esc(s.apiKey)}" /> <button id="s-balance" style="margin-left:6px;padding:2px 10px;font-size:11px">${tr('balance.query')}</button></div>
         <div class="field"><label>Base URL</label><input id="s-base" value="${esc(s.baseURL)}" /></div>
-        <div class="field"><label>${tr('settings.modelId')}</label><input id="s-model" value="${esc(s.model)}" /></div>
+        <div class="field"><label>${tr('settings.modelId')}</label><input id="s-model" value="${esc(s.model)}" /> <button id="s-scan-models" style="margin-left:6px;padding:2px 10px;font-size:11px;display:none">🔄 读取本地模型</button></div>
         <div class="field"><label>${tr('settings.protocol')}</label><select id="s-proto">
           <option value="openai" ${s.apiProtocol === 'openai' ? 'selected' : ''}>${tr('settings.proto.openai')}</option>
           <option value="anthropic" ${s.apiProtocol === 'anthropic' ? 'selected' : ''}>Anthropic</option>
@@ -1343,6 +1343,46 @@ async function showSettings() {
 
   document.getElementById('s-back')!.onclick = () => showChat();
   document.getElementById('s-preset')!.onchange = apply;
+
+  // Ollama 预设时显示「读取本地模型」按钮
+  const scanBtn = document.getElementById('s-scan-models')!;
+  const modelInput = document.getElementById('s-model') as HTMLInputElement;
+  function syncScanBtn(): void {
+    const base = (document.getElementById('s-base') as HTMLInputElement).value;
+    scanBtn.style.display = base.includes('localhost:11434') || base.includes('127.0.0.1:11434') ? '' : 'none';
+  }
+  // preset 切换后也检测
+  document.getElementById('s-preset')!.addEventListener('change', () => setTimeout(syncScanBtn, 0));
+  syncScanBtn();
+
+  // 读取本地 Ollama 模型列表 → 填充 datalist
+  scanBtn.onclick = async () => {
+    const base = (document.getElementById('s-base') as HTMLInputElement).value;
+    scanBtn.textContent = '⏳ 读取中…';
+    const r = await api.listLocalModels(base);
+    scanBtn.textContent = '🔄 读取本地模型';
+    if (!r.ok || r.models.length === 0) {
+      showMsg(r.message || '未找到模型,确认 Ollama 正在运行', false);
+      return;
+    }
+    // 用 prompt 让用户选(简单可靠,无需额外 DOM)
+    if (r.models.length === 1) {
+      modelInput.value = r.models[0];
+      showMsg(`已填入 ${r.models[0]}`, true);
+    } else {
+      let dl = document.getElementById('s-model-list') as HTMLDataListElement | null;
+      if (!dl) {
+        dl = document.createElement('datalist');
+        dl.id = 's-model-list';
+        modelInput.setAttribute('list', 's-model-list');
+        document.body.appendChild(dl);
+      }
+      dl.innerHTML = r.models.map((m) => `<option value="${esc(m)}"></option>`).join('');
+      modelInput.setAttribute('list', 's-model-list');
+      modelInput.focus();
+      showMsg(`找到 ${r.models.length} 个模型,点击模型输入框下拉选择`, true);
+    }
+  };
 
   // 协议切换时自动联动 Base URL —— 智谱 OpenAI ↔ Anthropic 地址不同
   document.getElementById('s-proto')!.onchange = () => {

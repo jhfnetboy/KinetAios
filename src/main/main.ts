@@ -688,6 +688,21 @@ function registerIpc(): void {
     }
   });
 
+  // 列出本地 Ollama 已安装的模型(GET {baseURL}/api/tags)
+  ipcMain.handle('list-local-models', async (_e, baseURL?: string) => {
+    const base = (baseURL || '').replace(/\/v1\/?$/, '').replace(/\/$/, '');
+    if (!base) return { ok: false, models: [], message: 'Base URL 为空' };
+    try {
+      const res = await fetch(`${base}/api/tags`, { signal: AbortSignal.timeout(5_000) });
+      if (!res.ok) return { ok: false, models: [], message: `HTTP ${res.status}` };
+      const data = await res.json() as any;
+      const models: string[] = (data.models || []).map((m: any) => m.name || m.model).filter(Boolean);
+      return { ok: true, models, message: '' };
+    } catch (e) {
+      return { ok: false, models: [], message: (e as Error)?.message ?? String(e) };
+    }
+  });
+
   // 查询智谱 API 账户状态 — Coding Plan 用量 + 钱包余额
   // 参考 CC Switch (github.com/farion1231/cc-switch) coding_plan.rs:
   //   1. Coding Plan 用量: GET {host}/api/monitor/usage/quota/limit
