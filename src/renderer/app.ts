@@ -1181,14 +1181,14 @@ async function showSettings() {
 
       <div class="s-section">
         <h3>💾 模型配置档 <span style="font-weight:400;font-size:12px;color:var(--muted)">保存多套配置,聊天界面可快速切换</span></h3>
-        <div class="field" style="align-items:flex-start">
-          <label>保存当前</label>
+        <div id="s-profile-list" style="margin-top:8px"></div>
+        <div class="field" style="align-items:flex-start;margin-top:8px">
+          <label>存为新配置</label>
           <div style="display:flex;gap:6px;flex:1">
             <input id="s-profile-name" placeholder="配置名(如 GLM-5.2 / DeepSeek)" style="flex:1" />
-            <button id="s-profile-save" style="padding:4px 14px;font-size:12px;white-space:nowrap">💾 保存配置档</button>
+            <button id="s-profile-save" style="padding:4px 14px;font-size:12px;white-space:nowrap">➕ 添加</button>
           </div>
         </div>
-        <div id="s-profile-list" style="margin-top:8px"></div>
       </div>
       </div><!-- /model panel -->
 
@@ -1524,7 +1524,7 @@ async function showSettings() {
     const container = document.getElementById('s-profile-list');
     if (!container) return;
     if (profiles.length === 0) {
-      container.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">暂无保存的配置档。填好上面的配置后点「保存配置档」即可。</div>';
+      container.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">暂无配置档。填好上方 API 配置后,在底部输入名称点「添加」。</div>';
       return;
     }
     container.innerHTML = profiles.map((p: any) => `
@@ -1547,7 +1547,7 @@ async function showSettings() {
         (document.getElementById('s-reason') as HTMLSelectElement).value = pf.reasoning;
         (document.getElementById('s-pin') as HTMLInputElement).value = pf.priceInPerMTok;
         (document.getElementById('s-pout') as HTMLInputElement).value = pf.priceOutPerMTok;
-        showMsg(`已载入「${pf.name}」,修改后点底部「保存设置」生效`, true);
+        showMsg(`已载入「${pf.name}」`, true);
       };
     });
     container.querySelectorAll('[data-pf-del]').forEach((btn) => {
