@@ -92,7 +92,7 @@ export type SkillType = 'skill' | 'command' | 'agent';
 export type SkillInfo = {
   name: string;
   description: string;
-  source: 'claude' | 'codex' | 'plugin';
+  source: 'claude' | 'codex' | 'plugin' | 'builtin';
   type: SkillType;
 };
 

@@ -3409,7 +3409,11 @@ function handleSlash(composer: HTMLTextAreaElement): void {
 }
 
 async function openSlash(q: string): Promise<void> {
-  const all = await ensureSkills();
+  // 内置斜杠命令(不是 skill 文件,而是 app 硬编码的快捷指令)。
+  const builtin: SkillInfo[] = [
+    { name: 'goal', description: '设置会话目标(持续注入 systemPrompt,引导整个会话方向)', type: 'command', source: 'builtin' },
+  ];
+  const all = [...builtin, ...(await ensureSkills())];
   slashItems = all
     .filter((s) => s.name.toLowerCase().includes(q))
     .sort((a, b) => {
