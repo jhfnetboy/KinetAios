@@ -472,6 +472,7 @@ const ZH_CN: Dict = {
   'settings.testing': '测试中…',
 
   'preset.glm': 'GLM 智谱',
+  'preset.glm-anthropic': 'GLM 智谱 (Anthropic 协议)',
   'preset.qwen': '阿里通义 (DashScope)',
   'preset.ollama': '本地 Ollama (llama3.2 / qwen2.5 等)',
   'preset.custom': '自定义',
@@ -1039,6 +1040,7 @@ const EN: Dict = {
   'settings.testing': 'Testing…',
 
   'preset.glm': 'GLM (Zhipu)',
+  'preset.glm-anthropic': 'GLM (Zhipu, Anthropic API)',
   'preset.qwen': 'Alibaba Qwen (DashScope)',
   'preset.ollama': 'Local Ollama (llama3.2 / qwen2.5 etc.)',
   'preset.custom': 'Custom',
@@ -1607,6 +1609,7 @@ const ZH_TW: Dict = {
   'settings.testing': '測試中…',
 
   'preset.glm': 'GLM 智譜',
+  'preset.glm-anthropic': 'GLM 智譜 (Anthropic 協議)',
   'preset.qwen': '阿里通義 (DashScope)',
   'preset.ollama': '本地 Ollama (llama3.2 / qwen2.5 等)',
   'preset.custom': '自訂',
@@ -2175,6 +2178,7 @@ const JA: Dict = {
   'settings.testing': 'テスト中…',
 
   'preset.glm': 'GLM (Zhipu)',
+  'preset.glm-anthropic': 'GLM (Zhipu, Anthropic API)',
   'preset.qwen': 'Alibaba Qwen (DashScope)',
   'preset.ollama': 'ローカル Ollama (llama3.2 / qwen2.5 等)',
   'preset.custom': 'カスタム',

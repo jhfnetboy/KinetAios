@@ -1344,6 +1344,19 @@ async function showSettings() {
   document.getElementById('s-back')!.onclick = () => showChat();
   document.getElementById('s-preset')!.onchange = apply;
 
+  // 协议切换时自动联动 Base URL —— 智谱 OpenAI ↔ Anthropic 地址不同
+  document.getElementById('s-proto')!.onchange = () => {
+    const baseEl = document.getElementById('s-base') as HTMLInputElement;
+    const proto = (document.getElementById('s-proto') as HTMLSelectElement).value;
+    const cur = baseEl.value.trim();
+    // 智谱:OpenAI 用 /api/paas/v4,Anthropic 用 /api/anthropic
+    if (proto === 'anthropic' && cur.includes('open.bigmodel.cn/api/paas/v4')) {
+      baseEl.value = 'https://open.bigmodel.cn/api/anthropic';
+    } else if (proto === 'openai' && cur.includes('open.bigmodel.cn/api/anthropic')) {
+      baseEl.value = 'https://open.bigmodel.cn/api/paas/v4';
+    }
+  };
+
   // ── 多机协作:MCP Server 控制按钮 ──
   function renderRemoteList() {
     const list = document.getElementById('s-remote-list')!;
@@ -4032,7 +4045,7 @@ function relativize(abs: string, cwd: string): string {
 
 const PRESETS = [
   { id: 'glm', labelKey: 'preset.glm', baseURL: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-5.2', proto: 'openai', pin: 0.07, pout: 0.21 },
-  { id: 'deepseek', labelKey: 'preset.deepseek', baseURL: 'https://api.deepseek.com', model: 'deepseek-chat', proto: 'openai', pin: 0.27, pout: 1.1 },
+  { id: 'glm-anthropic', labelKey: 'preset.glm-anthropic', baseURL: 'https://open.bigmodel.cn/api/anthropic', model: 'glm-4.6', proto: 'anthropic', pin: 0.07, pout: 0.21 },  { id: 'deepseek', labelKey: 'preset.deepseek', baseURL: 'https://api.deepseek.com', model: 'deepseek-chat', proto: 'openai', pin: 0.27, pout: 1.1 },
   { id: 'qwen', labelKey: 'preset.qwen', baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-max', proto: 'openai', pin: 0.29, pout: 0.86 },
   { id: 'ollama', labelKey: 'preset.ollama', baseURL: 'http://localhost:11434/v1', model: 'llama3.2', proto: 'openai', pin: 0, pout: 0 },
   { id: 'custom', labelKey: 'preset.custom', baseURL: '', model: '', proto: 'openai', pin: 0, pout: 0 },
