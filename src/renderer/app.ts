@@ -1355,7 +1355,7 @@ async function showSettings() {
   document.getElementById('s-preset')!.addEventListener('change', () => setTimeout(syncScanBtn, 0));
   syncScanBtn();
 
-  // 读取本地 Ollama 模型列表 → 填充 datalist
+  // 读取本地 Ollama 模型列表 → 弹出选择菜单
   scanBtn.onclick = async () => {
     const base = (document.getElementById('s-base') as HTMLInputElement).value;
     scanBtn.textContent = '⏳ 读取中…';
@@ -1365,24 +1365,53 @@ async function showSettings() {
       showMsg(r.message || '未找到模型,确认 Ollama 正在运行', false);
       return;
     }
-    // 用 prompt 让用户选(简单可靠,无需额外 DOM)
     if (r.models.length === 1) {
       modelInput.value = r.models[0];
       showMsg(`已填入 ${r.models[0]}`, true);
-    } else {
-      let dl = document.getElementById('s-model-list') as HTMLDataListElement | null;
-      if (!dl) {
-        dl = document.createElement('datalist');
-        dl.id = 's-model-list';
-        modelInput.setAttribute('list', 's-model-list');
-        document.body.appendChild(dl);
-      }
-      dl.innerHTML = r.models.map((m) => `<option value="${esc(m)}"></option>`).join('');
-      modelInput.setAttribute('list', 's-model-list');
-      modelInput.focus();
-      showMsg(`找到 ${r.models.length} 个模型,点击模型输入框下拉选择`, true);
+      return;
     }
+    // 构建 floating dropdown(比 datalist 在 Electron 下可靠)
+    showModelPicker(r.models, modelInput);
   };
+
+  /** 弹出浮动菜单让用户选模型 */
+  function showModelPicker(models: string[], input: HTMLInputElement): void {
+    // 先移除已有弹窗
+    document.querySelectorAll('.model-picker-pop').forEach((el) => el.remove());
+    const pop = document.createElement('div');
+    pop.className = 'model-picker-pop';
+    pop.style.cssText = 'position:fixed;z-index:99999;background:var(--bg-1);border:1px solid var(--border);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.4);max-height:300px;overflow-y:auto;min-width:200px;padding:4px';
+    // 定位到 input 下方
+    const rect = input.getBoundingClientRect();
+    pop.style.left = `${rect.left}px`;
+    pop.style.top = `${rect.bottom + 4}px`;
+    models.forEach((m) => {
+      const item = document.createElement('div');
+      item.textContent = m;
+      item.style.cssText = 'padding:6px 12px;cursor:pointer;border-radius:4px;font-size:13px;color:var(--text)';
+      item.onmouseenter = () => { item.style.background = 'var(--bg-2)'; };
+      item.onmouseleave = () => { item.style.background = ''; };
+      item.onclick = () => {
+        input.value = m;
+        showMsg(`已选择 ${m}`, true);
+        pop.remove();
+      };
+      pop.appendChild(item);
+    });
+    // 填充提示
+    const hint = document.createElement('div');
+    hint.textContent = `找到 ${models.length} 个模型`;
+    hint.style.cssText = 'padding:4px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:4px';
+    pop.insertBefore(hint, pop.firstChild);
+    document.body.appendChild(pop);
+    // 点击外部关闭
+    setTimeout(() => {
+      const close = (e: MouseEvent) => {
+        if (!pop.contains(e.target as Node)) { pop.remove(); document.removeEventListener('mousedown', close); }
+      };
+      document.addEventListener('mousedown', close);
+    }, 0);
+  }
 
   // 协议切换时自动联动 Base URL —— 智谱 OpenAI ↔ Anthropic 地址不同
   document.getElementById('s-proto')!.onchange = () => {
