@@ -766,15 +766,16 @@ function renderHead(conv: Conversation | undefined) {
   dot.className = `dot ${cls}`;
   title.textContent = conv.customTitle || conv.turns[0]?.prompt.slice(0, 60) || tr('head.newConv');
   if (document.activeElement !== cwd) cwd.value = conv.cwd;
-  // Model picker only matters for Direct (claudeCode/codex use their own CLI models) → hide otherwise.
-  model.style.display = conv.engine === 'direct' ? '' : 'none';
-  if (document.activeElement !== model) model.value = conv.model;
-  // 配置档下拉:只在 Direct 引擎 + 有配置档时显示
+  // 配置档下拉:只在 Direct 引擎 + 有配置档时显示;有配置档时隐藏 model-input
   const profileSel = document.getElementById('profile-select') as HTMLSelectElement | null;
+  const hasProfiles = !!(profileSel && profileSel.options.length > 1);
   if (profileSel) {
     profileSel.value = conv.profileId || '';
-    profileSel.style.display = (conv.engine === 'direct' && profileSel.options.length > 1) ? '' : 'none';
+    profileSel.style.display = (conv.engine === 'direct' && hasProfiles) ? '' : 'none';
   }
+  // Model picker only matters for Direct (claudeCode/codex use their own CLI models) → hide otherwise.
+  model.style.display = (conv.engine === 'direct' && !hasProfiles) ? '' : 'none';
+  if (document.activeElement !== model) model.value = conv.model;
   syncEngineSelect(conv);
   const parts: string[] = [];
   if (conv.tokens) parts.push(`${(conv.tokens / 1000).toFixed(1)}k tok`);
