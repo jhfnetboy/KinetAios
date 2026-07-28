@@ -102,8 +102,9 @@ class DirectEngine implements Engine {
   constructor(private confirm: (cmd: string) => Promise<boolean>) {}
   async run({ conv, memoryBlock, rulesBlock, contextBlock, skillBlock, refBlock, signal, onEvent }: EngineRunOpts): Promise<void> {
     const prompt = conv.turns[conv.turns.length - 1]?.prompt ?? '';
-    // Per-conversation model (Direct only). Falls back to the global setting for old convs.
-    const base = snapshot();
+    // Per-conversation model (Direct only). If the conversation has a profileId, use that profile's
+    // config; otherwise fall back to global settings + per-conversation model override.
+    const base = snapshot(conv.profileId);
     const snap = { ...base, model: conv.model || base.model };
     const provider = currentProvider(snap);
     // ctx.spawn:dispatch_agent 起子任务 —— 复用 runAgentLoop,独立 history、只读工具、maxTurns 限 8。

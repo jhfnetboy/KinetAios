@@ -15,6 +15,7 @@ const api: KinetAPI = {
   setCwd: (id, cwd) => ipcRenderer.invoke('set-cwd', id, cwd),
   setEngine: (id, engine) => ipcRenderer.invoke('set-engine', id, engine),
   setModel: (id, model) => ipcRenderer.invoke('set-model', id, model),
+  setConvProfile: (id, profileId) => ipcRenderer.invoke('set-conv-profile', id, profileId),
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (s) => ipcRenderer.invoke('save-settings', s),
   testConnection: (s?) => ipcRenderer.invoke('test-connection', s),

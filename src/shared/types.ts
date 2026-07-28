@@ -32,6 +32,21 @@ export const ENGINE_LABELS: Record<EngineKind, string> = {
 // Sandbox controls what spawned CLIs (claude --permission-mode / codex -s) may do.
 export type SandboxMode = 'readOnly' | 'workspaceWrite' | 'fullAccess';
 
+// 模型配置档 — 保存完整 LLM 连接信息,聊天界面可快速切换。
+// A saved model profile — contains everything needed to connect to an LLM provider.
+export type ModelProfile = {
+  id: string;
+  name: string;           // 显示名 (e.g. "GLM-5.2", "DeepSeek-V3")
+  apiKey: string;
+  baseURL: string;
+  model: string;
+  apiProtocol: APIProtocol;
+  reasoning: ReasoningEffort;
+  priceInPerMTok: number;
+  priceOutPerMTok: number;
+  createdAt: number;
+};
+
 export type AppSettings = {
   apiKey: string;
   baseURL: string;
@@ -49,6 +64,10 @@ export type AppSettings = {
   presetId: string;
   lang: Lang; // UI 语言(en / zh-CN / zh-TW / ja),默认 zh-CN;给模型看的字符串不译
   theme: 'dark' | 'light' | 'aurora' | 'serene'; // 暗 / 淡色 / 极光 / 高雅淡色主题
+  // ── 模型配置档:保存多套完整 LLM 配置(含 apiKey/baseURL/model/protocol 等),聊天界面可快速切换 ──
+  // 当前生效的配置 = 活跃 profile(若有),否则回退到全局 apiKey/baseURL/model 等(向后兼容)。
+  modelProfiles: ModelProfile[];
+  activeProfileId: string | null; // null = 使用全局默认配置(无 profile)
   // ── Embedding 接口配置(独立于主 LLM 接口)──
   // 默认留空 = 跟随主接口(baseURL/apiKey 复用主 LLM 的),填了则独立走自己的 endpoint。
   embedBaseURL: string;    // '' = 复用主 baseURL
@@ -238,6 +257,7 @@ export type Conversation = {
   id: string;
   engine: EngineKind;
   model: string; // Direct 引擎用的模型,每会话独立;claudeCode/codex 由各自 CLI 配置
+  profileId?: string | null; // 绑定的模型配置档(切换 profile 时更新;null = 用全局 settings)
   cwd: string;
   createdAt: number;
   customTitle: string | null;
@@ -292,6 +312,8 @@ export interface KinetAPI {
   setCwd(id: string, cwd: string): Promise<boolean>;
   setEngine(id: string, engine: EngineKind): Promise<boolean>;
   setModel(id: string, model: string): Promise<boolean>;
+  /** 切换会话使用的模型配置档(写入 profileId,引擎运行时读取 profile 配置) */
+  setConvProfile(id: string, profileId: string | null): Promise<boolean>;
   getSettings(): Promise<AppSettings>;
   saveSettings(s: AppSettings): Promise<boolean>;
   testConnection(s?: AppSettings): Promise<{ ok: boolean; message: string }>;

@@ -87,6 +87,20 @@ export class TaskManager {
     this.emit.emitConversation(conv);
   }
 
+  // 绑定/解绑会话的模型配置档 —— DirectEngine 运行时按 profileId 读取完整配置。
+  setConvProfile(id: string, profileId: string | null): void {
+    const conv = this.convs.get(id);
+    if (!conv) return;
+    conv.profileId = profileId;
+    // 同步更新 model 显示名(让 header 里看到当前用的模型)
+    if (profileId) {
+      const profile = getSettings().modelProfiles.find((p) => p.id === profileId);
+      if (profile) conv.model = profile.model;
+    }
+    store.saveConversation(conv);
+    this.emit.emitConversation(conv);
+  }
+
   deleteConversation(id: string): void {
     this.cancel(id);
     store.deleteConversation(id);
@@ -333,7 +347,7 @@ export class TaskManager {
   // 输出两部分:facts(原有,自由文本记忆)+ triples(Phase 4 新增,主谓宾三元组,Memory Graph 用)。
   private async extractMemories(turn: Conversation['turns'][number], prompt: string, convId: string, parentSignal: AbortSignal): Promise<void> {
     if (!turn.answer || turn.answer.length <= 15) return;
-    const snap = snapshot();
+    const snap = snapshot(this.convs.get(convId)?.profileId);
     const sys = `你是记忆提取器。从下面这轮对话里提取【关于用户本人】的持久事实 —— 身份、职业、偏好、习惯、技术栈、家庭/宠物、所在城市、工具链、长期项目、价值观。
 哪怕只透出一点点信号也提取,宁可多提取不要漏。
 输出 JSON 对象,两个字段:

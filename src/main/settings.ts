@@ -20,6 +20,9 @@ const DEFAULTS: AppSettings = {
   presetId: 'glm',
   lang: 'zh-CN',
   theme: 'dark',
+  // 模型配置档:用户在设置页保存的多套完整 LLM 配置。空数组 = 只有全局默认。
+  modelProfiles: [],
+  activeProfileId: null,
   // Embedding 接口默认值:留空 = 跟随主接口,model 默认 embedding-3(GLM 智谱)。
   embedBaseURL: '',
   embedApiKey: '',
@@ -75,8 +78,21 @@ export function saveSettings(s: AppSettings): void {
 }
 
 // Snapshot for one request — reads live settings so a settings change takes effect next task.
-export function snapshot(): ConfigSnapshot {
+// If an active profile is set, use its config (lets the user switch providers per-conversation).
+export function snapshot(profileId?: string | null): ConfigSnapshot {
   const s = getSettings();
+  // 优先用指定 profileId(来自 conversation),其次用全局 activeProfileId,最后用全局默认。
+  const pid = profileId ?? s.activeProfileId;
+  const profile = pid ? s.modelProfiles.find((p) => p.id === pid) : null;
+  if (profile) {
+    return {
+      baseURL: profile.baseURL,
+      model: profile.model,
+      apiKey: profile.apiKey,
+      apiProtocol: profile.apiProtocol,
+      reasoning: profile.reasoning,
+    };
+  }
   return {
     baseURL: s.baseURL,
     model: s.model,

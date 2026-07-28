@@ -42,6 +42,8 @@ let localMcpServerCache: AppSettings['localMcpServer'] = { enabled: false, port:
 let remoteMcpServersCache: AppSettings['remoteMcpServers'] = [];
 // 插件禁用列表缓存(由插件面板通过 pluginToggle IPC 直接修改,save settings 时原样回写)。
 let disabledPluginsCache: string[] = [];
+// 模型配置档缓存(设置页保存时原样回写,不在 readSettingsForm 里从 DOM 读)
+let profileCache: any[] = [];
 // 远程节点缓存(从 main 进程拉取,含在线状态和工具数) / Remote node cache from main process
 let remoteNodesCache: Array<{ name: string; url?: string; online: boolean; toolCount: number }> = [];
 let filesController: FilesPaneController | null = null; // 「文件」tab 懒挂载
@@ -201,6 +203,8 @@ function applyI18nDOM(): void {
     showRemoteAgentBanner(ev);
   });
 
+  // 加载已保存的模型配置档到缓存 + 填充下拉
+  api.getSettings().then((s) => { profileCache = s.modelProfiles || []; });
   fillModelHints();
   wireUi();
   syncSidebarModeBtn();
@@ -765,6 +769,12 @@ function renderHead(conv: Conversation | undefined) {
   // Model picker only matters for Direct (claudeCode/codex use their own CLI models) → hide otherwise.
   model.style.display = conv.engine === 'direct' ? '' : 'none';
   if (document.activeElement !== model) model.value = conv.model;
+  // 配置档下拉:只在 Direct 引擎 + 有配置档时显示
+  const profileSel = document.getElementById('profile-select') as HTMLSelectElement | null;
+  if (profileSel) {
+    profileSel.value = conv.profileId || '';
+    profileSel.style.display = (conv.engine === 'direct' && profileSel.options.length > 1) ? '' : 'none';
+  }
   syncEngineSelect(conv);
   const parts: string[] = [];
   if (conv.tokens) parts.push(`${(conv.tokens / 1000).toFixed(1)}k tok`);
@@ -1167,6 +1177,18 @@ async function showSettings() {
         <div class="field"><label>${tr('settings.embed.baseURL')}</label><input id="s-embed-base" value="${esc(s.embedBaseURL || '')}" placeholder="${esc(tr('settings.embed.baseURLPh'))}" /></div>
         <div class="field"><label>${tr('settings.embed.apiKey')}</label><input id="s-embed-key" type="password" value="${esc(s.embedApiKey || '')}" placeholder="${esc(tr('settings.embed.apiKeyPh'))}" /></div>
       </div>
+
+      <div class="s-section">
+        <h3>💾 模型配置档 <span style="font-weight:400;font-size:12px;color:var(--muted)">保存多套配置,聊天界面可快速切换</span></h3>
+        <div class="field" style="align-items:flex-start">
+          <label>保存当前</label>
+          <div style="display:flex;gap:6px;flex:1">
+            <input id="s-profile-name" placeholder="配置名(如 GLM-5.2 / DeepSeek)" style="flex:1" />
+            <button id="s-profile-save" style="padding:4px 14px;font-size:12px;white-space:nowrap">💾 保存配置档</button>
+          </div>
+        </div>
+        <div id="s-profile-list" style="margin-top:8px"></div>
+      </div>
       </div><!-- /model panel -->
 
       <div class="s-tab-panel" data-panel="behavior" style="display:none">
@@ -1372,6 +1394,7 @@ async function showSettings() {
     const ns = readSettingsForm();
     await api.saveSettings(ns);
     cliEnabled = ns.enableCliEngines;
+    profileCache = ns.modelProfiles || []; // 同步缓存
     lang = ns.lang; // 语言切了 → 刷静态文本 + 重渲(侧栏/主区/设置面板自身)
     setTownLang(lang); // 同步小镇视图语言 / sync town view lang
     applyTheme(ns.theme);
@@ -1381,6 +1404,84 @@ async function showSettings() {
     showSettings(); // 重开设置面板,让所有 label/option 跟随新语言
     showMsg(tr('settings.saved'), true);
   };
+
+  // ── 模型配置档:保存当前表单内容为新 profile ──
+  document.getElementById('s-profile-save')!.onclick = async () => {
+    const name = (document.getElementById('s-profile-name') as HTMLInputElement).value.trim();
+    if (!name) { showMsg('请输入配置名', false); return; }
+    const form = readSettingsForm();
+    const profile = {
+      id: `pf_${Date.now().toString(36)}`,
+      name,
+      apiKey: form.apiKey,
+      baseURL: form.baseURL,
+      model: form.model,
+      apiProtocol: form.apiProtocol,
+      reasoning: form.reasoning,
+      priceInPerMTok: form.priceInPerMTok,
+      priceOutPerMTok: form.priceOutPerMTok,
+      createdAt: Date.now(),
+    };
+    const cur = await api.getSettings();
+    const profiles = [...(cur.modelProfiles || []), profile];
+    await api.saveSettings({ ...cur, modelProfiles: profiles });
+    profileCache = profiles; // 同步缓存
+    void fillProfileSelect(); // 刷新聊天界面的下拉
+    (document.getElementById('s-profile-name') as HTMLInputElement).value = '';
+    renderProfileList(profiles);
+    showMsg(`✅ 已保存配置档「${name}」`, true);
+  };
+
+  // 渲染配置档列表
+  async function renderProfileList(profiles?: any[]) {
+    if (!profiles) {
+      const cur = await api.getSettings();
+      profiles = cur.modelProfiles || [];
+    }
+    const container = document.getElementById('s-profile-list');
+    if (!container) return;
+    if (profiles.length === 0) {
+      container.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">暂无保存的配置档。填好上面的配置后点「保存配置档」即可。</div>';
+      return;
+    }
+    container.innerHTML = profiles.map((p: any) => `
+      <div class="profile-item" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px">
+        <span style="font-weight:600;min-width:100px">${esc(p.name)}</span>
+        <span style="color:var(--muted);font-size:12px;flex:1">${esc(p.model)} · ${esc(p.baseURL.slice(0, 40))}</span>
+        <button class="ghost" data-pf-load="${p.id}" style="padding:2px 10px;font-size:11px">载入</button>
+        <button class="ghost" data-pf-del="${p.id}" style="padding:2px 10px;font-size:11px;color:var(--danger)">删除</button>
+      </div>
+    `).join('');
+    container.querySelectorAll('[data-pf-load]').forEach((btn) => {
+      (btn as HTMLElement).onclick = () => {
+        const pid = (btn as HTMLElement).dataset.pfLoad!;
+        const pf = profiles.find((p: any) => p.id === pid);
+        if (!pf) return;
+        (document.getElementById('s-key') as HTMLInputElement).value = pf.apiKey;
+        (document.getElementById('s-base') as HTMLInputElement).value = pf.baseURL;
+        (document.getElementById('s-model') as HTMLInputElement).value = pf.model;
+        (document.getElementById('s-proto') as HTMLSelectElement).value = pf.apiProtocol;
+        (document.getElementById('s-reason') as HTMLSelectElement).value = pf.reasoning;
+        (document.getElementById('s-pin') as HTMLInputElement).value = pf.priceInPerMTok;
+        (document.getElementById('s-pout') as HTMLInputElement).value = pf.priceOutPerMTok;
+        showMsg(`已载入「${pf.name}」,修改后点底部「保存设置」生效`, true);
+      };
+    });
+    container.querySelectorAll('[data-pf-del]').forEach((btn) => {
+      (btn as HTMLElement).onclick = async () => {
+        const pid = (btn as HTMLElement).dataset.pfDel!;
+        const cur = await api.getSettings();
+        const profiles2 = (cur.modelProfiles || []).filter((p: any) => p.id !== pid);
+        await api.saveSettings({ ...cur, modelProfiles: profiles2 });
+        profileCache = profiles2;
+        void fillProfileSelect();
+        renderProfileList(profiles2);
+        showMsg('已删除', true);
+      };
+    });
+  }
+  void renderProfileList();
+
   document.getElementById('s-test')!.onclick = async () => {
     showMsg(tr('settings.testing'), false);
     // Test the in-form values, not the last-saved ones (kills the "edit key, test, still old key" trap).
@@ -1717,6 +1818,8 @@ function readSettingsForm(): AppSettings {
     },
     remoteMcpServers: remoteMcpServersCache,
     disabledPlugins: disabledPluginsCache,
+    modelProfiles: profileCache,
+    activeProfileId: null, // 不从表单读(由聊天界面切换时写),保持 null
   };
 }
 
@@ -2068,6 +2171,19 @@ function closeMoreMenu() { document.getElementById('sb-more-menu')?.classList.re
   const model = document.getElementById('model-input') as HTMLInputElement;
   model.addEventListener('change', () => {
     if (selectedId) api.setModel(selectedId, model.value.trim());
+  });
+
+  // 配置档下拉:切换时调用 setConvProfile,DirectEngine 运行时读取该 profile 的完整配置
+  const profileSel = document.getElementById('profile-select') as HTMLSelectElement;
+  profileSel.addEventListener('change', () => {
+    if (!selectedId) return;
+    const pid = profileSel.value || null;
+    api.setConvProfile(selectedId, pid);
+    // 更新 model-input 显示名
+    if (pid) {
+      const opt = profileSel.querySelector(`option[value="${pid}"]`);
+      if (opt && document.activeElement !== model) model.value = opt.textContent || '';
+    }
   });
 
   const eng = document.getElementById('engine-select') as HTMLSelectElement;
@@ -3345,6 +3461,20 @@ const MODEL_HINTS = [
 function fillModelHints(): void {
   const dl = document.getElementById('model-list')!;
   dl.innerHTML = MODEL_HINTS.map((m) => `<option value="${esc(m)}"></option>`).join('');
+  // 同时填充 profile-select 下拉(从 settings 读取已保存的配置档)
+  void fillProfileSelect();
+}
+
+/** 填充聊天界面的配置档下拉。返回当前 profiles 列表(给调用方用)。 */
+async function fillProfileSelect(): Promise<any[]> {
+  const sel = document.getElementById('profile-select') as HTMLSelectElement | null;
+  if (!sel) return [];
+  const s = await api.getSettings();
+  const profiles = s.modelProfiles || [];
+  sel.innerHTML = '<option value="">(默认配置)</option>' +
+    profiles.map((p: any) => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  sel.style.display = profiles.length > 0 ? '' : 'none';
+  return profiles;
 }
 
 function esc(s: string): string {
