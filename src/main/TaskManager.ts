@@ -193,10 +193,12 @@ export class TaskManager {
       const goalText = goalMatch[1]?.trim() || null;
       conv.goal = goalText;
       store.saveConversation(conv);
-      this.emit.emitEvent(id, {
-        type: 'status',
-        text: goalText ? `🎯 目标已设置: ${goalText}` : '🎯 目标已清除',
-      });
+      // 插入一个已完成的 turn 作为视觉反馈(不发给引擎)
+      const t = newTurn(prompt);
+      t.answer = goalText ? `🎯 会话目标已设置: ${goalText}` : '🎯 会话目标已清除';
+      t.done = true;
+      conv.turns.push(t);
+      store.saveTurn(conv.id, t);
       this.emit.emitConversation(conv);
       return;
     }
