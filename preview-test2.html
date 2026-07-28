@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实时系统监控</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'SF Mono','Cascadia Code',monospace;background:#0a0e14;color:#c9d1d9;padding:20px;min-height:100vh}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.header h1{font-size:18px;font-weight:600;display:flex;align-items:center;gap:10px}
+.status-dot{width:10px;height:10px;border-radius:50%;background:#3fb950;box-shadow:0 0 8px #3fb950;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.clock{font-size:14px;color:#8b949e}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.card{background:#11151c;border:1px solid #1c2230;border-radius:10px;padding:18px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.card.c1::before{background:linear-gradient(90deg,#58a6ff,transparent)}
+.card.c2::before{background:linear-gradient(90deg,#3fb950,transparent)}
+.card.c3::before{background:linear-gradient(90deg,#d29922,transparent)}
+.card .label{font-size:11px;color:#6e7681;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.card .value{font-size:32px;font-weight:700;letter-spacing:-1px}
+.card .unit{font-size:14px;color:#6e7681;font-weight:400;margin-left:4px}
+.card .bar{height:4px;background:#1c2230;border-radius:2px;margin-top:10px;overflow:hidden}
+.card .bar-fill{height:100%;border-radius:2px;transition:width .8s ease}
+.c1 .bar-fill{background:#58a6ff}
+.c2 .bar-fill{background:#3fb950}
+.c3 .bar-fill{background:#d29922}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.chart-box{background:#11151c;border:1px solid #1c2230;border-radius:10px;padding:18px}
+.chart-title{font-size:12px;color:#8b949e;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.badge{font-size:10px;padding:2px 8px;border-radius:10px;background:#1c2230;color:#8b949e}
+canvas{width:100%;height:160px;display:block}
+.log{background:#11151c;border:1px solid #1c2230;border-radius:10px;padding:14px 18px;margin-top:14px;max-height:120px;overflow-y:auto}
+.log-title{font-size:12px;color:#8b949e;margin-bottom:8px}
+.log-line{font-size:12px;line-height:1.8;color:#6e7681}
+.log-line .time{color:#484f58}
+.log-line .lvl-i{color:#3fb950}
+.log-line .lvl-w{color:#d29922}
+.log-line .lvl-e{color:#f85149}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span class="status-dot"></span> 系统监控大屏</h1>
+  <div class="clock" id="clock">--:--:--</div>
+</div>
+
+<div class="grid">
+  <div class="card c1">
+    <div class="label">CPU 使用率</div>
+    <div class="value" id="cpu-val">0<span class="unit">%</span></div>
+    <div class="bar"><div class="bar-fill" id="cpu-bar" style="width:0%"></div></div>
+  </div>
+  <div class="card c2">
+    <div class="label">内存占用</div>
+    <div class="value" id="mem-val">0<span class="unit">GB</span></div>
+    <div class="bar"><div class="bar-fill" id="mem-bar" style="width:0%"></div></div>
+  </div>
+  <div class="card c3">
+    <div class="label">网络吞吐</div>
+    <div class="value" id="net-val">0<span class="unit">MB/s</span></div>
+    <div class="bar"><div class="bar-fill" id="net-bar" style="width:0%"></div></div>
+  </div>
+</div>
+
+<div class="charts">
+  <div class="chart-box">
+    <div class="chart-title">CPU 趋势 (60s) <span class="badge" id="cpu-avg">avg --%</span></div>
+    <canvas id="cpu-chart"></canvas>
+  </div>
+  <div class="chart-box">
+    <div class="chart-title">请求量 (60s) <span class="badge" id="req-badge">-- req/s</span></div>
+    <canvas id="req-chart"></canvas>
+  </div>
+</div>
+
+<div class="log">
+  <div class="log-title">实时日志</div>
+  <div id="log-body"></div>
+</div>
+
+<script>
+// 模拟数据
+const cpuHistory = Array(60).fill(0).map(()=>Math.random()*30+15);
+const reqHistory = Array(60).fill(0).map(()=>Math.random()*200+300);
+let logLines = [];
+
+function tick() {
+  // CPU
+  const cpu = Math.round(Math.random()*35+30);
+  cpuHistory.shift(); cpuHistory.push(cpu);
+  document.getElementById('cpu-val').innerHTML = cpu + '<span class="unit">%</span>';
+  document.getElementById('cpu-bar').style.width = cpu + '%';
+  const cpuAvg = Math.round(cpuHistory.reduce((a,b)=>a+b,0)/cpuHistory.length);
+  document.getElementById('cpu-avg').textContent = 'avg ' + cpuAvg + '%';
+
+  // Memory
+  const mem = (Math.random()*4+8).toFixed(1);
+  document.getElementById('mem-val').innerHTML = mem + '<span class="unit">GB</span>';
+  document.getElementById('mem-bar').style.width = (mem/16*100) + '%';
+
+  // Network
+  const net = (Math.random()*15+5).toFixed(1);
+  document.getElementById('net-val').innerHTML = net + '<span class="unit">MB/s</span>';
+  document.getElementById('net-bar').style.width = (net/20*100) + '%';
+
+  // Requests
+  const req = Math.round(Math.random()*200+350);
+  reqHistory.shift(); reqHistory.push(req);
+  document.getElementById('req-badge').textContent = req + ' req/s';
+
+  drawChart('cpu-chart', cpuHistory, '#58a6ff', 100);
+  drawChart('req-chart', reqHistory, '#3fb950', 600);
+
+  // Clock
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    String(now.getHours()).padStart(2,'0') + ':' +
+    String(now.getMinutes()).padStart(2,'0') + ':' +
+    String(now.getSeconds()).padStart(2,'0');
+
+  // Log
+  const events = [
+    {l:'i',m:'健康检查通过 · node-03'},
+    {l:'i',m:'API 请求 200 OK · /api/v1/users'},
+    {l:'w',m:'缓存命中率低于阈值 · 62%'},
+    {l:'i',m:'数据库连接池: 8/20 活跃'},
+    {l:'e',m:'超时: /api/v1/export (3/3 retry)'},
+    {l:'i',m:'任务完成 · batch-import-42'},
+  ];
+  if (Math.random() > 0.3) {
+    const e = events[Math.floor(Math.random()*events.length)];
+    const t = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+    logLines.unshift({time:t, ...e});
+    if (logLines.length > 8) logLines.pop();
+    document.getElementById('log-body').innerHTML = logLines.map(l =>
+      `<div class="log-line"><span class="time">${l.time}</span> <span class="lvl-${l.l}">[${l.l.toUpperCase()}]</span> ${l.m}</div>`
+    ).join('');
+  }
+}
+
+function drawChart(id, data, color, max) {
+  const canvas = document.getElementById(id);
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const w = rect.width, h = rect.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // Grid
+  ctx.strokeStyle = '#1c2230';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 3; i++) {
+    const y = h * i / 3;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+
+  const step = w / (data.length - 1);
+  // Area
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, color + '44');
+  grad.addColorStop(1, color + '00');
+  ctx.beginPath();
+  ctx.moveTo(0, h);
+  data.forEach((v, i) => {
+    const x = i * step;
+    const y = h - (v / max) * h * 0.9;
+    if (i === 0) ctx.lineTo(x, y);
+    else {
+      const px = (i-1) * step;
+      const py = h - (data[i-1] / max) * h * 0.9;
+      ctx.quadraticCurveTo((px+x)/2, (py+y)/2, x, y);
+    }
+  });
+  ctx.lineTo(w, h);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = i * step;
+    const y = h - (v / max) * h * 0.9;
+    if (i === 0) ctx.moveTo(x, y);
+    else {
+      const px = (i-1) * step;
+      const py = h - (data[i-1] / max) * h * 0.9;
+      ctx.quadraticCurveTo((px+x)/2, (py+y)/2, x, y);
+    }
+  });
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Last point
+  const lastX = (data.length - 1) * step;
+  const lastY = h - (data[data.length-1] / max) * h * 0.9;
+  ctx.beginPath();
+  ctx.arc(lastX, lastY, 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#0a0e14';
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+tick();
+setInterval(tick, 1500);
+</script>
+</body>
+</html>
