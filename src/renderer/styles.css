@@ -321,6 +321,7 @@ input, textarea, select {
   border-radius: 6px; padding: 7px 9px; width: 100%;
 }
 input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent-dim); }
+option { color: var(--text); background: var(--bg-2); }
 a { color: var(--accent); }
 
 #app { display: flex; height: 100vh; }
