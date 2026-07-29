@@ -320,6 +320,7 @@ input, textarea, select {
   font: inherit; color: var(--text); background: var(--bg-input); border: 1px solid var(--border);
   border-radius: 6px; padding: 7px 9px; width: 100%;
 }
+textarea { user-select: text; } /* 覆盖 body 的 user-select:none, 否则鼠标选中文字会选不全 */
 input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent-dim); }
 option { color: var(--text); background: var(--bg-2); }
 a { color: var(--accent); }
@@ -608,7 +609,7 @@ a { color: var(--accent); }
 .avatar { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; }
 .msg.user .avatar { background: var(--accent-dim); }
 .msg.ai .avatar { background: var(--bg-elev); border: 1px solid var(--border); }
-.msg .bubble { max-width: 78%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; word-break: break-word; background: var(--bg-elev); border: 1px solid var(--border); }
+.msg .bubble { max-width: 78%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; word-break: break-word; background: var(--bg-elev); border: 1px solid var(--border); user-select: text; }
 .msg.user .bubble { border-top-right-radius: 4px; }
 .msg .ai-body { max-width: 78%; min-width: 0; }
 .msg .ai-body .answer { margin-top: 0; }
