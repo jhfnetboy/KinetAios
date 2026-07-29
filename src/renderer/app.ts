@@ -1050,7 +1050,7 @@ function updatePreview(html: string): void {
   // 如果当前是空状态或 iframe 被移除了,先恢复 iframe
   let iframe = document.getElementById('preview-iframe') as HTMLIFrameElement | null;
   if (!iframe) {
-    body.innerHTML = '<iframe id="preview-iframe" sandbox="allow-scripts allow-popups allow-forms allow-modals"></iframe>';
+    body.innerHTML = '<iframe id="preview-iframe" sandbox="allow-scripts allow-popups allow-forms"></iframe>';
     iframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
   }
   // 用 blob: URL 加载(比 srcdoc 兼容性好,Electron 不一定支持 srcdoc)
