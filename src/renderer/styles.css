@@ -615,6 +615,9 @@ a { color: var(--accent); }
 .msg .ai-body .answer { margin-top: 0; }
 .msg .ai-body .steps { margin: 0 0 8px; }
 .answer { margin-top: 12px; user-select: text; }
+.answer p, .answer h1, .answer h2, .answer h3, .answer h4, .answer h5, .answer h6,
+.answer ul, .answer ol, .answer li, .answer blockquote, .answer strong, .answer em,
+.answer a, .answer span, .answer code, .answer pre { user-select: text; }
 .answer.streaming { white-space: pre-wrap; font-family: ui-monospace, "Cascadia Code", monospace; font-size: 12px; color: var(--text-dim); }
 .typing { display: inline-flex; gap: 5px; padding: 6px 2px; }
 .typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); animation: typing-blink 1.3s infinite ease-in-out; }
@@ -628,7 +631,7 @@ a { color: var(--accent); }
 .answer blockquote { margin: 0 0 8px; padding-left: 12px; border-left: 3px solid var(--border); color: var(--text-dim); }
 .answer .ic, .answer .code { font-family: ui-monospace, "Cascadia Code", monospace; background: var(--code-bg); border-radius: 4px; }
 .answer .ic { padding: 1px 5px; font-size: 12px; }
-.answer .code { display: block; padding: 10px 12px; overflow-x: auto; white-space: pre; user-select: text; font-size: 12px; }
+.answer .code { display: block; padding: 10px 12px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; user-select: text; font-size: 12px; }
 .steps { margin: 8px 0; }
 .step { border-left: 2px solid var(--accent-dim); padding: 6px 10px; margin-bottom: 6px; background: var(--bg-side); border-radius: 0 6px 6px 0; font-size: 12px; }
 .step .name { color: var(--accent); font-weight: 600; }
