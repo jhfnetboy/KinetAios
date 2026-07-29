@@ -1241,6 +1241,7 @@ button.sm { padding: 3px 8px; font-size: 11px; }
   tab-size: 2;
   width: 100%;
   height: 100%;
+  user-select: text; /* 覆盖 body 的 user-select:none, 否则跨行选中会选不全 */
 }
 .ce-input::placeholder {
   color: var(--text-faint);
