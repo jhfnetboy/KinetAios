@@ -214,6 +214,13 @@ class OpenAICompatibleProvider implements Provider {
     }
     if (snap.reasoning !== 'none') body.reasoning_effort = snap.reasoning;
 
+    // Ollama 默认 num_ctx 只有 4096,系统提示 + 历史很容易超限报 400。
+    // 检测到 Ollama 端点时自动把上下文窗口拉到 32768,避免 exceed_context_size_error。
+    const isOllama = /:11434\b/i.test(snap.baseURL) || /\/ollama\b/i.test(snap.baseURL);
+    if (isOllama) {
+      body.options = { num_ctx: 32768 };
+    }
+
     const resp = await fetchUntil200(`${snap.baseURL}/chat/completions`, {
       method: 'POST',
       headers: {
