@@ -44,6 +44,8 @@ let remoteMcpServersCache: AppSettings['remoteMcpServers'] = [];
 let disabledPluginsCache: string[] = [];
 // 模型配置档缓存(设置页保存时原样回写,不在 readSettingsForm 里从 DOM 读)
 let profileCache: any[] = [];
+// 正在编辑的配置档 ID(null = 新建模式,有值 = 编辑模式)
+let editingProfileId: string | null = null;
 // 远程节点缓存(从 main 进程拉取,含在线状态和工具数) / Remote node cache from main process
 let remoteNodesCache: Array<{ name: string; url?: string; online: boolean; toolCount: number }> = [];
 let filesController: FilesPaneController | null = null; // 「文件」tab 懒挂载
@@ -1197,6 +1199,7 @@ async function showSettings() {
           <label>存为新配置</label>
           <div style="display:flex;gap:6px;flex:1">
             <input id="s-profile-name" placeholder="配置名(如 GLM-5.2 / DeepSeek)" style="flex:1" />
+            <button id="s-profile-cancel" style="padding:4px 14px;font-size:12px;white-space:nowrap;display:none">取消</button>
             <button id="s-profile-save" style="padding:4px 14px;font-size:12px;white-space:nowrap">➕ 添加</button>
           </div>
         </div>
@@ -1499,31 +1502,73 @@ async function showSettings() {
     showMsg(tr('settings.saved'), true);
   };
 
-  // ── 模型配置档:保存当前表单内容为新 profile ──
+  // ── 模型配置档:保存当前表单内容为新 profile 或覆盖编辑中的 profile ──
   document.getElementById('s-profile-save')!.onclick = async () => {
     const name = (document.getElementById('s-profile-name') as HTMLInputElement).value.trim();
     if (!name) { showMsg('请输入配置名', false); return; }
     const form = readSettingsForm();
-    const profile = {
-      id: `pf_${Date.now().toString(36)}`,
-      name,
-      apiKey: form.apiKey,
-      baseURL: form.baseURL,
-      model: form.model,
-      apiProtocol: form.apiProtocol,
-      reasoning: form.reasoning,
-      priceInPerMTok: form.priceInPerMTok,
-      priceOutPerMTok: form.priceOutPerMTok,
-      createdAt: Date.now(),
-    };
     const cur = await api.getSettings();
-    const profiles = [...(cur.modelProfiles || []), profile];
+    let profiles = cur.modelProfiles || [];
+    if (editingProfileId) {
+      // 编辑模式:覆盖已有 profile(保留 id 和 createdAt)
+      profiles = profiles.map((p: any) => p.id === editingProfileId ? {
+        ...p,
+        name,
+        apiKey: form.apiKey,
+        baseURL: form.baseURL,
+        model: form.model,
+        apiProtocol: form.apiProtocol,
+        reasoning: form.reasoning,
+        priceInPerMTok: form.priceInPerMTok,
+        priceOutPerMTok: form.priceOutPerMTok,
+      } : p);
+      showMsg(`✅ 已更新配置档「${name}」`, true);
+    } else {
+      // 新建模式
+      const profile = {
+        id: `pf_${Date.now().toString(36)}`,
+        name,
+        apiKey: form.apiKey,
+        baseURL: form.baseURL,
+        model: form.model,
+        apiProtocol: form.apiProtocol,
+        reasoning: form.reasoning,
+        priceInPerMTok: form.priceInPerMTok,
+        priceOutPerMTok: form.priceOutPerMTok,
+        createdAt: Date.now(),
+      };
+      profiles = [...profiles, profile];
+      showMsg(`✅ 已保存配置档「${name}」`, true);
+    }
     await api.saveSettings({ ...cur, modelProfiles: profiles });
     profileCache = profiles; // 同步缓存
     void fillProfileSelect(); // 刷新聊天界面的下拉
+    // 重置为新建模式
+    editingProfileId = null;
     (document.getElementById('s-profile-name') as HTMLInputElement).value = '';
+    const saveBtn = document.getElementById('s-profile-save')!;
+    saveBtn.textContent = '➕ 添加';
+    (document.getElementById('s-profile-cancel') as HTMLElement).style.display = 'none';
     renderProfileList(profiles);
-    showMsg(`✅ 已保存配置档「${name}」`, true);
+  };
+
+  // 把 profile 字段填到设置表单(载入和编辑共用) / Fill profile fields into settings form
+  function applyProfileToForm(pf: any): void {
+    (document.getElementById('s-key') as HTMLInputElement).value = pf.apiKey;
+    (document.getElementById('s-base') as HTMLInputElement).value = pf.baseURL;
+    (document.getElementById('s-model') as HTMLInputElement).value = pf.model;
+    (document.getElementById('s-proto') as HTMLSelectElement).value = pf.apiProtocol;
+    (document.getElementById('s-reason') as HTMLSelectElement).value = pf.reasoning;
+    (document.getElementById('s-pin') as HTMLInputElement).value = pf.priceInPerMTok;
+    (document.getElementById('s-pout') as HTMLInputElement).value = pf.priceOutPerMTok;
+  }
+
+  // 取消编辑:回到新建模式 / Cancel edit: back to create mode
+  document.getElementById('s-profile-cancel')!.onclick = () => {
+    editingProfileId = null;
+    (document.getElementById('s-profile-name') as HTMLInputElement).value = '';
+    document.getElementById('s-profile-save')!.textContent = '➕ 添加';
+    (document.getElementById('s-profile-cancel') as HTMLElement).style.display = 'none';
   };
 
   // 渲染配置档列表
@@ -1543,6 +1588,7 @@ async function showSettings() {
         <span style="font-weight:600;min-width:100px">${esc(p.name)}</span>
         <span style="color:var(--muted);font-size:12px;flex:1">${esc(p.model)} · ${esc(p.baseURL.slice(0, 40))}</span>
         <button class="ghost" data-pf-load="${p.id}" style="padding:2px 10px;font-size:11px">载入</button>
+        <button class="ghost" data-pf-edit="${p.id}" style="padding:2px 10px;font-size:11px">✏️ 修改</button>
         <button class="ghost" data-pf-del="${p.id}" style="padding:2px 10px;font-size:11px;color:var(--danger)">删除</button>
       </div>
     `).join('');
@@ -1551,14 +1597,24 @@ async function showSettings() {
         const pid = (btn as HTMLElement).dataset.pfLoad!;
         const pf = profiles.find((p: any) => p.id === pid);
         if (!pf) return;
-        (document.getElementById('s-key') as HTMLInputElement).value = pf.apiKey;
-        (document.getElementById('s-base') as HTMLInputElement).value = pf.baseURL;
-        (document.getElementById('s-model') as HTMLInputElement).value = pf.model;
-        (document.getElementById('s-proto') as HTMLSelectElement).value = pf.apiProtocol;
-        (document.getElementById('s-reason') as HTMLSelectElement).value = pf.reasoning;
-        (document.getElementById('s-pin') as HTMLInputElement).value = pf.priceInPerMTok;
-        (document.getElementById('s-pout') as HTMLInputElement).value = pf.priceOutPerMTok;
+        applyProfileToForm(pf);
         showMsg(`已载入「${pf.name}」`, true);
+      };
+    });
+    container.querySelectorAll('[data-pf-edit]').forEach((btn) => {
+      (btn as HTMLElement).onclick = () => {
+        const pid = (btn as HTMLElement).dataset.pfEdit!;
+        const pf = profiles.find((p: any) => p.id === pid);
+        if (!pf) return;
+        applyProfileToForm(pf);
+        // 进入编辑模式:记住正在编辑的 profile id,底部按钮变为"保存修改"
+        editingProfileId = pid;
+        (document.getElementById('s-profile-name') as HTMLInputElement).value = pf.name;
+        const saveBtn = document.getElementById('s-profile-save')!;
+        saveBtn.textContent = '💾 保存修改';
+        const cancelBtn = document.getElementById('s-profile-cancel')!;
+        cancelBtn.style.display = '';
+        showMsg(`正在编辑「${pf.name}」,修改上方配置后点「保存修改」`, true);
       };
     });
     container.querySelectorAll('[data-pf-del]').forEach((btn) => {
