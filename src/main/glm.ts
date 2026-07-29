@@ -19,8 +19,8 @@ export type Completion = {
 };
 
 export class GLMError extends Error {
-  constructor(public kind: 'noKey' | 'http', public code = 0, public detail = '') {
-    super(kind === 'noKey' ? 'no API key' : `HTTP ${code}${detail ? `: ${detail}` : ''}`);
+  constructor(public kind: 'noKey' | 'http' | 'noBody', public code = 0, public detail = '') {
+    super(kind === 'noKey' ? 'no API key' : kind === 'noBody' ? 'no response body' : `HTTP ${code}${detail ? `: ${detail}` : ''}`);
   }
 }
 
@@ -215,10 +215,11 @@ class OpenAICompatibleProvider implements Provider {
     if (snap.reasoning !== 'none') body.reasoning_effort = snap.reasoning;
 
     // Ollama 默认 num_ctx 只有 4096,系统提示 + 历史很容易超限报 400。
-    // 检测到 Ollama 端点时自动把上下文窗口拉到 32768,避免 exceed_context_size_error。
+    // ⚠ Ollama 的 /v1/chat/completions (OpenAI 兼容层) 不透传 options.num_ctx,
+    //    只能走原生 /api/chat 端点才能设置上下文窗口大小。
     const isOllama = /:11434\b/i.test(snap.baseURL) || /\/ollama\b/i.test(snap.baseURL);
     if (isOllama) {
-      body.options = { num_ctx: 32768 };
+      return ollamaStream(messages, tools, snap, signal, onToken, wireMsgs);
     }
 
     const resp = await fetchUntil200(`${snap.baseURL}/chat/completions`, {
@@ -282,6 +283,95 @@ class OpenAICompatibleProvider implements Provider {
       .map((v) => ({ id: v.id, name: v.name, arguments: v.args }));
     return { content, toolCalls, rawAssistant: rawAssistant(content, toolCalls), tokensIn, tokensOut };
   }
+}
+
+// Ollama 原生 /api/chat 流式:每行一个 JSON(非 SSE),字段 message.content 做 token,
+// tool_calls 在 message.tool_calls 里(非 streaming 时一次性返回)。
+// 只有走原生端点才能设 options.num_ctx(OpenAI 兼容层 /v1/ 不透传 options)。
+async function ollamaStream(
+  _messages: ChatMsg[],
+  tools: ToolDef[],
+  snap: ConfigSnapshot,
+  signal: AbortSignal,
+  onToken: (t: string) => void,
+  wireMsgs: Record<string, unknown>[],
+): Promise<Completion> {
+  const body: Record<string, unknown> = {
+    model: snap.model,
+    messages: wireMsgs,
+    stream: true,
+    options: { num_ctx: 32768 },
+  };
+  if (tools.length) {
+    body.tools = tools.map((t) => ({
+      type: 'function',
+      function: { name: t.function.name, description: t.function.description, parameters: t.function.parameters },
+    }));
+  }
+
+  // /api/chat 端点:从 baseURL 去掉 /v1 后缀,加上 /api/chat。
+  const base = snap.baseURL.replace(/\/v1\/?$/, '');
+  const resp = await fetchUntil200(`${base}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/x-ndjson' },
+    body: JSON.stringify(body),
+    signal,
+  });
+
+  let content = '';
+  const calls = new Map<number, { id: string; name: string; args: string }>();
+  let tokensIn = 0;
+  let tokensOut = 0;
+
+  const reader = resp.body?.getReader();
+  if (!reader) throw new GLMError('noBody');
+  const decoder = new TextDecoder();
+  let buf = '';
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop() ?? '';
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        const obj = JSON.parse(trimmed) as Record<string, any>;
+        if (obj.done && obj.total_duration !== undefined) {
+          // 最终统计行
+          tokensIn = intFrom(obj.prompt_eval_count) || tokensIn;
+          tokensOut = intFrom(obj.eval_count) || tokensOut;
+          break;
+        }
+        const msg = obj.message;
+        if (!msg) continue;
+        if (typeof msg.content === 'string' && msg.content) {
+          content += msg.content;
+          onToken(msg.content);
+        }
+        if (Array.isArray(msg.tool_calls)) {
+          for (let i = 0; i < msg.tool_calls.length; i++) {
+            const tc = msg.tool_calls[i];
+            const fn = tc.function ?? {};
+            calls.set(i, {
+              id: tc.id ?? '',
+              name: fn.name ?? '',
+              args: typeof fn.arguments === 'string' ? fn.arguments : JSON.stringify(fn.arguments ?? {}),
+            });
+          }
+        }
+      } catch { /* skip malformed line */ }
+    }
+  }
+
+  const toolCalls = [...calls.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([, v]) => v)
+    .filter((v) => v.name)
+    .map((v) => ({ id: v.id, name: v.name, arguments: v.args }));
+  return { content, toolCalls, rawAssistant: rawAssistant(content, toolCalls), tokensIn, tokensOut };
 }
 
 // MARK: Anthropic protocol (/v1/messages, x-api-key + anthropic-version). Bidirectional OpenAI↔Anthropic.
