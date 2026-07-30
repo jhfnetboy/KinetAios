@@ -1175,6 +1175,7 @@ async function showSettings() {
         </select></div>
         <div class="field"><label><input type="checkbox" id="s-plan" ${s.planMode ? 'checked' : ''} style="width:auto;margin-right:6px" />${tr('settings.plan')}</label></div>
         <div class="field"><label><input type="checkbox" id="s-cli" ${s.enableCliEngines ? 'checked' : ''} style="width:auto;margin-right:6px" />${tr('settings.cli')}</label></div>
+        <div class="field"><label><input type="checkbox" id="s-voice-auto" ${s.voiceAutoSend ? 'checked' : ''} style="width:auto;margin-right:6px" />${tr('settings.voiceAutoSend')}</label></div>
       </div>
 
       <div class="s-section">
@@ -1951,6 +1952,7 @@ function readSettingsForm(): AppSettings {
     sandbox: (document.getElementById('s-sandbox') as HTMLSelectElement).value as AppSettings['sandbox'],
     planMode: (document.getElementById('s-plan') as HTMLInputElement).checked,
     enableCliEngines: (document.getElementById('s-cli') as HTMLInputElement).checked,
+    voiceAutoSend: (document.getElementById('s-voice-auto') as HTMLInputElement).checked,
     priceInPerMTok: Number((document.getElementById('s-pin') as HTMLInputElement).value) || 0,
     priceOutPerMTok: Number((document.getElementById('s-pout') as HTMLInputElement).value) || 0,
     lang: (document.getElementById('s-lang') as HTMLSelectElement).value as Lang,
@@ -2704,9 +2706,34 @@ function closeMoreMenu() { document.getElementById('sb-more-menu')?.classList.re
 let mediaRec: MediaRecorder | null = null;
 let recActive = false;
 let recChunks: Blob[] = [];
+
+// ── Web Speech API 实时语音识别状态 ──
+// 开启 voiceAutoSend 后,语音按钮切换到实时模式:边说边出文字,VAD 静音后自动发送。
+// ponytail: Web Speech API 在 Chrome/Edge 走 Google 云端 ASR(需联网);后续可换 whisper.cpp 离线。
+let speechRec: any = null;       // SpeechRecognition 实例(浏览器前缀)
+let speechActive = false;         // 是否正在实时听写
+let speechFinalText = '';         // 累积的最终识别文本
+let speechSilenceTimer: ReturnType<typeof setTimeout> | null = null;  // VAD 静音检测定时器
+const SPEECH_SILENCE_MS = 800;    // 静音多久后判定说完(800ms,可调)
+let speechSupported = false;      // 浏览器是否支持 Web Speech API
+
+function initSpeechSupport(): void {
+  const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  speechSupported = !!SR;
+}
+
 function wireVoice(): void {
+  initSpeechSupport();
   const btn = document.getElementById('btn-voice')!;
   btn.onclick = async () => {
+    // ── 实时模式(Web Speech API)── 设置开启 voiceAutoSend 且浏览器支持时走此路径
+    const settings = await api.getSettings();
+    if (settings.voiceAutoSend && speechSupported) {
+      if (speechActive) { stopSpeechRecognition(); return; }
+      startSpeechRecognition();
+      return;
+    }
+    // ── 兼容模式(MediaRecorder 录音 → API 转写 → 填入 composer)──
     // 正在录音 → 停止 + 转写
     if (recActive && mediaRec) {
       mediaRec.stop();
@@ -2775,6 +2802,94 @@ function wireVoice(): void {
       }
     }
   };
+}
+
+// ── Web Speech API 实时语音识别 ── 开始听写
+// 边说边把 interim(临时)结果实时显示到 composer,final 结果累积。
+// VAD: onresult 每次触发时重置静音定时器,连续 SPEECH_SILENCE_MS 毫秒无新结果 → 自动发送。
+function startSpeechRecognition(): void {
+  const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  if (!SR) { alert(tr('voice.liveErr')); return; }
+
+  const btn = document.getElementById('btn-voice')!;
+  const composer = document.getElementById('composer') as HTMLTextAreaElement;
+
+  speechRec = new SR();
+  speechRec.continuous = true;       // 持续识别(不会说一句就断)
+  speechRec.interimResults = true;   // 返回临时结果(边说边出字)
+  speechRec.lang = lang === 'en' ? 'en-US' : lang === 'ja' ? 'ja-JP' : lang === 'zh-TW' ? 'zh-TW' : 'zh-CN';
+  speechFinalText = composer.value.trim();  // 保留已有内容(追加模式)
+
+  speechRec.onresult = (event: any) => {
+    // 收集本次事件中所有结果
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const res = event.results[i];
+      if (res.isFinal) {
+        speechFinalText += (speechFinalText && !speechFinalText.endsWith(' ') ? ' ' : '') + res[0].transcript;
+      } else {
+        interim += res[0].transcript;
+      }
+    }
+    // 实时显示:最终文本 + 当前临时文本
+    const display = speechFinalText + (interim ? (speechFinalText && !speechFinalText.endsWith(' ') ? ' ' : '') + interim : '');
+    composer.value = display;
+    autosize(composer);
+
+    // VAD: 每次有结果就重置静音定时器(说明用户还在说话)
+    if (speechSilenceTimer) clearTimeout(speechSilenceTimer);
+    speechSilenceTimer = setTimeout(() => {
+      // 静音超时 → 自动发送
+      stopSpeechRecognition();
+      const text = composer.value.trim();
+      if (text) {
+        btn.title = tr('voice.liveDone');
+        send();
+      }
+    }, SPEECH_SILENCE_MS);
+  };
+
+  speechRec.onerror = (event: any) => {
+    speechActive = false;
+    btn.classList.remove('listening');
+    btn.title = tr('voice.mic');
+    if (event.error === 'not-allowed' || event.error === 'permission-denied') {
+      alert(tr('voice.micDenied'));
+    } else if (event.error !== 'aborted' && event.error !== 'no-speech') {
+      alert(tr('voice.liveErr'));
+    }
+  };
+
+  // 识别意外结束(网络断开 / 超时)→ 清理状态,不自动发送
+  speechRec.onend = () => {
+    if (speechActive) {
+      // 还在活跃状态但引擎自己停了 → 尝试重启(continuous 模式有时会自己断)
+      try { speechRec.start(); } catch { /* 已在关闭中,忽略 */ }
+    }
+  };
+
+  try {
+    speechRec.start();
+    speechActive = true;
+    btn.classList.add('listening');
+    btn.title = tr('voice.liveListening');
+    composer.focus();
+  } catch {
+    alert(tr('voice.liveErr'));
+  }
+}
+
+// 停止实时语音识别 — 清理定时器和状态
+function stopSpeechRecognition(): void {
+  speechActive = false;
+  if (speechSilenceTimer) { clearTimeout(speechSilenceTimer); speechSilenceTimer = null; }
+  if (speechRec) {
+    try { speechRec.stop(); } catch { /* already stopped */ }
+    speechRec = null;
+  }
+  const btn = document.getElementById('btn-voice')!;
+  btn.classList.remove('listening');
+  btn.title = tr('voice.mic');
 }
 
 // TTS:speechSynthesis 系统级,零依赖。再次点同一个正在读的消息 → 取消。

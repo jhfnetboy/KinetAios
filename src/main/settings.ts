@@ -35,6 +35,7 @@ const DEFAULTS: AppSettings = {
   // 远程 MCP server 列表默认为空(用户在设置里添加其它机器)。
   remoteMcpServers: [],
   disabledPlugins: [], // 被禁用的插件 name 列表(空 = 全部启用)
+  voiceAutoSend: false, // 语音实时输入默认关闭(开启后 Web Speech API 实时转写 + VAD 自动发送)
 };
 
 let cache: AppSettings | null = null;

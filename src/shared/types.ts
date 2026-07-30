@@ -84,6 +84,10 @@ export type AppSettings = {
   remoteMcpServers: Array<{ name: string; url: string; token?: string }>;
   // ── 插件管理:被禁用的插件 name 列表(空 = 全部启用) ──
   disabledPlugins: string[];
+  // ── 语音实时输入(Web Speech API)── 开启后语音按钮切到实时模式:
+  // 说话时实时显示文字(VAD 检测静音后自动发送,无需手动点"发送")。
+  // 默认关闭 — 走旧的 MediaRecorder 录音 → 转写 → 填入 composer 模式。
+  voiceAutoSend: boolean;
 };
 
 // A discoverable skill from ~/.claude/skills or ~/.codex/skills (SKILL.md frontmatter). The slash
