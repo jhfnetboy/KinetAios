@@ -2707,30 +2707,34 @@ let mediaRec: MediaRecorder | null = null;
 let recActive = false;
 let recChunks: Blob[] = [];
 
-// ── Web Speech API 实时语音识别状态 ──
-// 开启 voiceAutoSend 后,语音按钮切换到实时模式:边说边出文字,VAD 静音后自动发送。
-// ponytail: Web Speech API 在 Chrome/Edge 走 Google 云端 ASR(需联网);后续可换 whisper.cpp 离线。
-let speechRec: any = null;       // SpeechRecognition 实例(浏览器前缀)
-let speechActive = false;         // 是否正在实时听写
-let speechFinalText = '';         // 累积的最终识别文本
-let speechSilenceTimer: ReturnType<typeof setTimeout> | null = null;  // VAD 静音检测定时器
-const SPEECH_SILENCE_MS = 800;    // 静音多久后判定说完(800ms,可调)
-let speechSupported = false;      // 浏览器是否支持 Web Speech API
-
-function initSpeechSupport(): void {
-  const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-  speechSupported = !!SR;
-}
+// ── 实时语音输入(VAD 自动发送模式)──
+// 开启 voiceAutoSend 后,语音按钮切到此模式:持续录音 + Web Audio API 音量检测做 VAD。
+// 检测到说话时录音,检测到静音后将已录音频分段发去转写,文字实时填入 composer。
+// 长时间静音(1.5s)后自动发送。不依赖 Web Speech API(Electron 不支持),走已有 transcribeAudio 通道。
+// ponytail: STT 需联网调 API,后续可换 whisper.cpp 离线。
+let vadActive = false;               // VAD 模式是否活跃
+let vadStream: MediaStream | null = null;
+let vadAudioCtx: AudioContext | null = null;
+let vadAnalyser: AnalyserNode | null = null;
+let vadMediaRec: MediaRecorder | null = null;
+let vadChunks: Blob[] = [];
+let vadFinalText = '';               // 累积已转写的文本
+let vadIsSpeaking = false;           // 当前是否在说话(音量超过阈值)
+let vadSilenceStart = 0;             // 开始静音的时间戳
+let vadRAF = 0;                       // requestAnimationFrame id
+let vadTranscribing = false;         // 正在转写上一段(避免并发)
+const VAD_THRESHOLD = 0.015;          // 音量阈值(0~1, 麦克风灵敏度不同需调)
+const VAD_SPEECH_END_MS = 600;        // 说话→静音多久后截断并发转写
+const VAD_AUTO_SEND_MS = 1500;        // 静音多久后判定全部说完,自动发送
 
 function wireVoice(): void {
-  initSpeechSupport();
   const btn = document.getElementById('btn-voice')!;
   btn.onclick = async () => {
-    // ── 实时模式(Web Speech API)── 设置开启 voiceAutoSend 且浏览器支持时走此路径
     const settings = await api.getSettings();
-    if (settings.voiceAutoSend && speechSupported) {
-      if (speechActive) { stopSpeechRecognition(); return; }
-      startSpeechRecognition();
+    // ── 实时模式(VAD)── 设置开启 voiceAutoSend 时走此路径
+    if (settings.voiceAutoSend) {
+      if (vadActive) { stopVAD(); return; }
+      startVAD();
       return;
     }
     // ── 兼容模式(MediaRecorder 录音 → API 转写 → 填入 composer)──
@@ -2804,89 +2808,182 @@ function wireVoice(): void {
   };
 }
 
-// ── Web Speech API 实时语音识别 ── 开始听写
-// 边说边把 interim(临时)结果实时显示到 composer,final 结果累积。
-// VAD: onresult 每次触发时重置静音定时器,连续 SPEECH_SILENCE_MS 毫秒无新结果 → 自动发送。
-function startSpeechRecognition(): void {
-  const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-  if (!SR) { alert(tr('voice.liveErr')); return; }
-
+// ── VAD 实时语音:开始 ──
+// 打开麦克风 → AudioContext 做音量检测 + MediaRecorder 持续录音。
+// requestAnimationFrame 循环检测音量:说话时标记 vadIsSpeaking,静音后截断当前录音段发去转写。
+async function startVAD(): Promise<void> {
   const btn = document.getElementById('btn-voice')!;
   const composer = document.getElementById('composer') as HTMLTextAreaElement;
-
-  speechRec = new SR();
-  speechRec.continuous = true;       // 持续识别(不会说一句就断)
-  speechRec.interimResults = true;   // 返回临时结果(边说边出字)
-  speechRec.lang = lang === 'en' ? 'en-US' : lang === 'ja' ? 'ja-JP' : lang === 'zh-TW' ? 'zh-TW' : 'zh-CN';
-  speechFinalText = composer.value.trim();  // 保留已有内容(追加模式)
-
-  speechRec.onresult = (event: any) => {
-    // 收集本次事件中所有结果
-    let interim = '';
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const res = event.results[i];
-      if (res.isFinal) {
-        speechFinalText += (speechFinalText && !speechFinalText.endsWith(' ') ? ' ' : '') + res[0].transcript;
-      } else {
-        interim += res[0].transcript;
-      }
+  try {
+    vadStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    const err = (e as Error)?.message ?? String(e);
+    if (err.includes('Permission') || err.includes('NotAllowed') || err.includes('denied')) {
+      alert(tr('voice.micDenied'));
+    } else {
+      alert(tr('voice.transcribeErr', { msg: err }));
     }
-    // 实时显示:最终文本 + 当前临时文本
-    const display = speechFinalText + (interim ? (speechFinalText && !speechFinalText.endsWith(' ') ? ' ' : '') + interim : '');
-    composer.value = display;
-    autosize(composer);
+    return;
+  }
 
-    // VAD: 每次有结果就重置静音定时器(说明用户还在说话)
-    if (speechSilenceTimer) clearTimeout(speechSilenceTimer);
-    speechSilenceTimer = setTimeout(() => {
-      // 静音超时 → 自动发送
-      stopSpeechRecognition();
-      const text = composer.value.trim();
+  const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
+    : MediaRecorder.isTypeSupported('audio/ogg') ? 'audio/ogg'
+    : 'audio/mp4';
+
+  // AudioContext 做音量检测
+  vadAudioCtx = new AudioContext();
+  const source = vadAudioCtx.createMediaStreamSource(vadStream);
+  vadAnalyser = vadAudioCtx.createAnalyser();
+  vadAnalyser.fftSize = 512;
+  vadAnalyser.smoothingTimeConstant = 0.3;
+  source.connect(vadAnalyser);
+
+  vadFinalText = composer.value.trim();
+  vadIsSpeaking = false;
+  vadSilenceStart = performance.now();
+  vadTranscribing = false;
+
+  // MediaRecorder 录音段
+  vadChunks = [];
+  vadMediaRec = new MediaRecorder(vadStream, { mimeType: mime });
+  vadMediaRec.ondataavailable = (e: BlobEvent) => {
+    if (e.data.size > 0) vadChunks.push(e.data);
+  };
+
+  // 开始检测循环
+  vadActive = true;
+  btn.classList.add('listening');
+  btn.title = tr('voice.liveListening');
+  composer.focus();
+
+  const buf = new Uint8Array(vadAnalyser.frequencyBinCount);
+
+  // ── 分段录音 + 转写 ──
+  function startSeg() {
+    if (!vadMediaRec || vadMediaRec.state === 'recording') return;
+    vadChunks = [];
+    try { vadMediaRec.start(); } catch { /* already started */ }
+  }
+  function stopSegAndTranscribe(): Promise<void> {
+    return new Promise((resolve) => {
+      if (!vadMediaRec || vadMediaRec.state !== 'recording') { resolve(); return; }
+      const mimeUsed = vadMediaRec.mimeType;
+      vadMediaRec.onstop = async () => {
+        if (vadChunks.length === 0) { resolve(); return; }
+        const blob = new Blob(vadChunks, { type: mimeUsed });
+        if (blob.size < 500) { resolve(); return; }  // 太短忽略
+        vadTranscribing = true;
+        try {
+          const arrBuf = await blob.arrayBuffer();
+          const bytes = new Uint8Array(arrBuf);
+          let b64 = '';
+          const CHUNK = 0x8000;
+          for (let i = 0; i < bytes.length; i += CHUNK) {
+            b64 += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK) as unknown as number[]);
+          }
+          b64 = btoa(b64);
+          const r = await api.transcribeAudio(b64, mimeUsed);
+          if (r.ok && r.text) {
+            const t = r.text.trim();
+            if (t) {
+              vadFinalText += (vadFinalText && !vadFinalText.endsWith(' ') ? ' ' : '') + t;
+              if (vadActive) {
+                composer.value = vadFinalText + ' ';
+                autosize(composer);
+              }
+            }
+          }
+        } catch { /* 转写失败,静默跳过 */ }
+        vadTranscribing = false;
+        resolve();
+      };
+      try { vadMediaRec.stop(); } catch { resolve(); }
+    });
+  }
+
+  // 开始第一段录音
+  startSeg();
+
+  // VAD 检测循环 — 用 requestAnimationFrame 轮询音量
+  function vadLoop() {
+    if (!vadActive || !vadAnalyser) return;
+    vadAnalyser.getByteTimeDomainData(buf);
+
+    // 计算 RMS 音量
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) {
+      const v = (buf[i] - 128) / 128;  // 归一化到 -1~1
+      sum += v * v;
+    }
+    const rms = Math.sqrt(sum / buf.length);
+
+    const now = performance.now();
+
+    if (rms > VAD_THRESHOLD) {
+      // 检测到说话
+      if (!vadIsSpeaking) vadIsSpeaking = true;
+      vadSilenceStart = now;
+    } else if (vadIsSpeaking) {
+      // 之前在说话,现在静音了
+      const silenceDur = now - vadSilenceStart;
+      if (silenceDur > VAD_SPEECH_END_MS && !vadTranscribing) {
+        // 静音超过阈值 → 截断当前段发去转写
+        vadIsSpeaking = false;
+        stopSegAndTranscribe().then(() => {
+          // 转写完成后,如果 VAD 仍活跃 → 重启录音段等待下一句
+          if (vadActive) startSeg();
+        });
+      }
+      // 长时间静音 → 自动发送
+      if (silenceDur > VAD_AUTO_SEND_MS && !vadTranscribing && vadFinalText) {
+        doAutoSend();
+        return;
+      }
+    } else if (!vadIsSpeaking && now - vadSilenceStart > VAD_AUTO_SEND_MS && vadFinalText) {
+      // 从未检测到说话但已有文本(可能阈值太高漏检)→ 超时也尝试发送
+      doAutoSend();
+      return;
+    }
+
+    vadRAF = requestAnimationFrame(vadLoop);
+  }
+
+  function doAutoSend() {
+    // 截断最后一段 → 转写 → 发送
+    if (vadRAF) { cancelAnimationFrame(vadRAF); vadRAF = 0; }
+    stopSegAndTranscribe().then(() => {
+      const text = vadFinalText.trim();
+      stopVAD();
       if (text) {
+        composer.value = text + ' ';
+        autosize(composer);
         btn.title = tr('voice.liveDone');
         send();
       }
-    }, SPEECH_SILENCE_MS);
-  };
-
-  speechRec.onerror = (event: any) => {
-    speechActive = false;
-    btn.classList.remove('listening');
-    btn.title = tr('voice.mic');
-    if (event.error === 'not-allowed' || event.error === 'permission-denied') {
-      alert(tr('voice.micDenied'));
-    } else if (event.error !== 'aborted' && event.error !== 'no-speech') {
-      alert(tr('voice.liveErr'));
-    }
-  };
-
-  // 识别意外结束(网络断开 / 超时)→ 清理状态,不自动发送
-  speechRec.onend = () => {
-    if (speechActive) {
-      // 还在活跃状态但引擎自己停了 → 尝试重启(continuous 模式有时会自己断)
-      try { speechRec.start(); } catch { /* 已在关闭中,忽略 */ }
-    }
-  };
-
-  try {
-    speechRec.start();
-    speechActive = true;
-    btn.classList.add('listening');
-    btn.title = tr('voice.liveListening');
-    composer.focus();
-  } catch {
-    alert(tr('voice.liveErr'));
+    });
   }
+
+  vadRAF = requestAnimationFrame(vadLoop);
 }
 
-// 停止实时语音识别 — 清理定时器和状态
-function stopSpeechRecognition(): void {
-  speechActive = false;
-  if (speechSilenceTimer) { clearTimeout(speechSilenceTimer); speechSilenceTimer = null; }
-  if (speechRec) {
-    try { speechRec.stop(); } catch { /* already stopped */ }
-    speechRec = null;
+// 停止 VAD — 清理所有资源(麦克风流、AudioContext、MediaRecorder、RAF)
+function stopVAD(): void {
+  vadActive = false;
+  if (vadRAF) { cancelAnimationFrame(vadRAF); vadRAF = 0; }
+  if (vadMediaRec) {
+    try { if (vadMediaRec.state === 'recording') vadMediaRec.stop(); } catch { /* ignore */ }
+    vadMediaRec = null;
   }
+  if (vadStream) {
+    vadStream.getTracks().forEach((t) => t.stop());
+    vadStream = null;
+  }
+  if (vadAudioCtx) {
+    try { vadAudioCtx.close(); } catch { /* ignore */ }
+    vadAudioCtx = null;
+  }
+  vadAnalyser = null;
+  vadIsSpeaking = false;
   const btn = document.getElementById('btn-voice')!;
   btn.classList.remove('listening');
   btn.title = tr('voice.mic');
