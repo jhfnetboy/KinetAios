@@ -987,19 +987,17 @@ a { color: var(--accent); }
 
 /* settings */
 #settings { padding: 28px 24px 48px; overflow-y: auto; max-width: 720px; margin: 0 auto; }
-#settings .card { max-width: 620px; }
+#settings .card { width: 100%; max-width: 620px; box-sizing: border-box; }
 #settings h2 { margin: 0 0 4px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
 #settings .sub { color: var(--text-dim); margin-bottom: 20px; font-size: 13px; line-height: 1.6; }
 /* 设置页 tab 导航(模型/行为/高级/多机协作) */
 .s-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
 .s-tab { padding: 8px 16px; font-size: 13px; border: none; background: none; color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent; transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
-.s-tab:active { transform: scale(0.98); }
 .s-tab:hover { color: var(--text); }
 .s-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-/* 设置页 tab 面板切换:统一用 opacity+微 translateY 进入,不用 scale 避免尺寸跳变。
-   animation 只在 display 从 none→block 时触发(display 切换会重置 animation)。 */
-.s-tab-panel { animation: panelIn var(--dur-normal) var(--ease-out); }
-@keyframes panelIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+/* 设置页 tab 面板切换:纯 opacity transition,无 transform 避免层叠上下文副作用。
+   display:none→block 时 opacity 从初始值(0)过渡到 1(JS 控制)。 */
+.s-tab-panel { opacity: 1; transition: opacity var(--dur-fast) var(--ease-out); }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
