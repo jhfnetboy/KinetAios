@@ -483,6 +483,11 @@
   --town-sky-bottom: #f5f1ec;
   --town-hover: rgba(183,110,121,0.04);
 }
+[data-theme="tahoe"] {
+  --town-sky-top: #0a0a14;
+  --town-sky-bottom: #000000;
+  --town-hover: rgba(10,132,255,0.04);
+}
 
 /* ── 响应式 / Responsive ── */
 @media (max-width: 700px) {
