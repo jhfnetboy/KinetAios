@@ -1741,11 +1741,17 @@ button.sm { padding: 3px 8px; font-size: 11px; }
   --danger:      var(--err);
   --warn:        #ff9f0a;
 
-  /* ── Sierra 专属:液态玻璃参数 ── */
-  --glass-bg:       rgba(255,250,242,0.55);   /* 半透明暖白雾(核心!) */
-  --glass-bg-hover: rgba(255,248,240,0.65);
-  --glass-blur:     28px;
-  --glass-blur-lg:  44px;
+  /* ── Sierra 专属:液态玻璃参数(精致版) ── */
+  --glass-bg:       rgba(255,250,242,0.48);   /* 略降低不透明度,更透出底色渐变 */
+  --glass-bg-hover: rgba(255,248,240,0.60);
+  --glass-bg-soft:  rgba(255,250,242,0.65);   /* 次级卡片更不透 */
+  --glass-bg-deep:  rgba(255,250,242,0.30);   /* 主背景层,几乎透明 */
+  --glass-blur:     32px;                    /* 强模糊(对标 Apple .regularMaterial) */
+  --glass-blur-lg:  48px;                    /* 大型面板更深模糊 */
+  --glass-saturate: 1.8;                     /* 提高饱和度,让底色"鲜活" */
+  --glass-bright:   1.05;                   /* 微亮,补偿 blur 带来的灰蒙 */
+  --glass-hi:       rgba(255,255,255,0.55);  /* 顶部高光带 */
+  --glass-hi-edge:  rgba(255,200,140,0.35);  /* 边缘暖色高光 */
 
   /* ── 投影:暖调阴影 ── */
   --shadow-xs: 0 1px 2px rgba(120,80,40,0.06);
@@ -1760,34 +1766,46 @@ button.sm { padding: 3px 8px; font-size: 11px; }
   --radius-md: 10px;
   --radius-lg: 14px;
 }
-/* Sierra: 暖色渐变背景 — 模拟日落金色光晕
-   大面积柔和暖色块(橙/粉/金/珊瑚),玻璃组件透出这些色彩。 */
+/* Sierra: 暖色渐变背景 — 模拟日落金色光晕(精致版:多色相 + 高饱和)
+   大面积柔和暖色块(橙/粉/金/珊瑚/桃),玻璃组件透出这些色彩。 */
 [data-theme="sierra"] body {
   background:
-    radial-gradient(ellipse 55% 45% at 12% 18%, rgba(255,159,10,0.16), transparent 55%),
-    radial-gradient(ellipse 45% 40% at 88% 12%, rgba(255,105,150,0.10), transparent 50%),
-    radial-gradient(ellipse 50% 45% at 78% 82%, rgba(255,179,64,0.12), transparent 55%),
-    radial-gradient(ellipse 40% 50% at 15% 78%, rgba(220,120,160,0.08), transparent 50%),
+    radial-gradient(ellipse 60% 50% at 10% 15%, rgba(255,159,10,0.32), transparent 60%),
+    radial-gradient(ellipse 50% 45% at 92% 10%, rgba(255,105,150,0.22), transparent 55%),
+    radial-gradient(ellipse 55% 50% at 75% 85%, rgba(255,179,64,0.28), transparent 55%),
+    radial-gradient(ellipse 45% 55% at 12% 80%, rgba(240,140,180,0.20), transparent 55%),
+    radial-gradient(ellipse 35% 30% at 50% 50%, rgba(255,220,160,0.18), transparent 60%),
     var(--bg);
 }
-/* Sierra: 侧边栏 — 半透明暖白雾玻璃 */
+/* Sierra: 侧边栏 — 半透明暖白雾玻璃 + 顶部高光带 + 右侧装饰线 */
 [data-theme="sierra"] #sidebar {
-  background: rgba(255,250,242,0.45);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  border-right-color: rgba(232,212,190,0.60);
+  background: rgba(255,250,242,0.42);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+  border-right: 1px solid rgba(232,212,190,0.50);
   position: relative;
+  box-shadow:
+    inset 1px 0 0 rgba(255,255,255,0.40),  /* 左侧内高光 */
+    1px 0 24px rgba(255,159,10,0.06);     /* 外发光 */
 }
 [data-theme="sierra"] #sidebar::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: .4;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 5%, var(--accent) 50%, transparent 95%);
+  opacity: .55;
+  z-index: 2;
+}
+[data-theme="sierra"] #sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0; right: -1px; bottom: 0;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(255,159,10,0.30) 30%, rgba(255,159,10,0.30) 70%, transparent);
   z-index: 1;
 }
-/* Sierra: 全局毛玻璃 — 卡片/面板/气泡/设置页 */
+/* Sierra: 全局毛玻璃(精致版) — 卡片/面板/气泡/设置页多层叠 */
 [data-theme="sierra"] .msg .bubble,
 [data-theme="sierra"] .modal-card,
 [data-theme="sierra"] .ctx-insp-card,
@@ -1801,23 +1819,50 @@ button.sm { padding: 3px 8px; font-size: 11px; }
 [data-theme="sierra"] .tpl-card,
 [data-theme="sierra"] .ctool-card {
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+  border: 1px solid rgba(255,255,255,0.40);
+  box-shadow:
+    0 1px 2px rgba(120,80,40,0.04),
+    0 4px 16px rgba(120,80,40,0.06),
+    inset 0 1px 0 rgba(255,255,255,0.55),    /* 顶部白色高光带(液态玻璃核心!) */
+    inset 0 -1px 0 rgba(232,180,120,0.15);  /* 底部暖色阴影带 */
 }
-/* Sierra: 主按钮 — systemOrange + 微光晕 */
+/* Sierra: 大型面板(设置页/模态)— 更深模糊 */
+[data-theme="sierra"] #settings-view,
+[data-theme="sierra"] .modal-box,
+[data-theme="sierra"] .inspect-modal {
+  backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+  -webkit-backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+}
+/* Sierra: 主按钮 — systemOrange + 顶部高光 + 光晕(精致液态按钮) */
 [data-theme="sierra"] button.primary {
-  background: var(--accent);
+  background: linear-gradient(180deg, #ffb340 0%, var(--accent) 50%, #e08000 100%);
   color: var(--accent-fg);
-  border: none;
-  box-shadow: 0 2px 8px rgba(255,159,10,.25);
+  border: 1px solid rgba(255,200,100,0.50);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.45) inset,     /* 顶部高光带 */
+    0 -1px 0 rgba(120,60,0,0.25) inset,       /* 底部阴影带 */
+    0 2px 8px rgba(255,159,10,0.30),          /* 外光晕 */
+    0 4px 16px rgba(255,159,10,0.15);         /* 长投影 */
+  font-weight: 600;
 }
 [data-theme="sierra"] button.primary:hover {
-  filter: brightness(1.08);
-  box-shadow: 0 4px 16px rgba(255,159,10,.35);
+  background: linear-gradient(180deg, #ffc266 0%, #ffa520 50%, #ff8c00 100%);
+  filter: none;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.55) inset,
+    0 -1px 0 rgba(120,60,0,0.30) inset,
+    0 4px 16px rgba(255,159,10,0.40),
+    0 8px 28px rgba(255,159,10,0.20);
+  transform: translateY(-1px);
 }
 [data-theme="sierra"] button.primary:active {
-  filter: brightness(0.92);
-  transform: scale(0.97);
+  background: linear-gradient(180deg, #e08000 0%, var(--accent) 50%, #c06800 100%);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.20) inset,
+    inset 0 1px 3px rgba(120,60,0,0.30);
+  transform: translateY(0);
 }
 /* Sierra: 焦点态 — systemOrange focus ring */
 [data-theme="sierra"] input:focus,
@@ -1832,69 +1877,100 @@ button.sm { padding: 3px 8px; font-size: 11px; }
 [data-theme="sierra"] select:hover {
   border-color: var(--text-faint);
 }
-/* Sierra: 用户气泡 — systemOrange 渐变(iMessage 暖色版) */
+/* Sierra: 用户气泡 — systemOrange 精致液态(iMessage 暖色版)
+   三段渐变 + 顶部高光带 + 边缘暖色描边 */
 [data-theme="sierra"] .msg.user .bubble {
-  background: linear-gradient(135deg, var(--accent), #ffb340);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.25) 0%, transparent 30%),
+    linear-gradient(135deg, var(--accent) 0%, #ffb340 50%, #ff8c00 100%);
   color: #fff;
-  border: none;
-  box-shadow: 0 2px 12px rgba(255,159,10,.20);
+  border: 1px solid rgba(255,200,100,0.40);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.45),    /* 顶部白色高光带 */
+    0 2px 12px rgba(255,159,10,0.25),
+    0 4px 20px rgba(255,159,10,0.15);
+  text-shadow: 0 1px 1px rgba(180,80,0,0.30);  /* 文字微立体 */
 }
-/* Sierra: AI 气泡 — 半透明暖白雾玻璃 */
+/* Sierra: AI 气泡 — 半透明暖白雾玻璃(精致版)
+   多层 blur + 顶部高光 + 边缘暖色描边 */
 [data-theme="sierra"] .msg .bubble {
-  background: rgba(255,250,242,0.50);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
-  border-color: rgba(232,212,190,0.50);
+  background: rgba(255,250,242,0.45);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+  border: 1px solid rgba(255,255,255,0.50);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.65),    /* 顶部高光带(核心!) */
+    0 2px 8px rgba(120,80,40,0.08),
+    0 4px 16px rgba(120,80,40,0.05);
 }
-/* Sierra: 滚动条 — 暖底配棕色滚动条 */
+/* Sierra: 滚动条 — 暖底配橙棕渐变(精致液态) */
 [data-theme="sierra"] ::-webkit-scrollbar-thumb {
-  background: rgba(120,80,40,0.18);
+  background: linear-gradient(180deg, rgba(120,80,40,0.20), rgba(120,80,40,0.28));
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 [data-theme="sierra"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,159,10,0.40);
+  background: linear-gradient(180deg, rgba(255,159,10,0.50), rgba(255,105,150,0.50));
+  background-clip: content-box;
+  border: 2px solid transparent;
 }
 /* Sierra: 状态点用系统色 */
 [data-theme="sierra"] .dot.ready { background: var(--ok); box-shadow: 0 0 8px rgba(48,209,88,.3); }
 [data-theme="sierra"] .dot.running { background: var(--accent); box-shadow: 0 0 8px rgba(255,159,10,.3); }
-/* Sierra: active 会话 — systemOrange 底 */
+/* Sierra: active 会话 — systemOrange 液态玻璃选中态 */
 [data-theme="sierra"] .cht.active,
 [data-theme="sierra"] .conv-item.active {
   color: var(--accent);
   background: rgba(255,159,10,0.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45);
 }
 [data-theme="sierra"] .cht.active::after,
 [data-theme="sierra"] .conv-item.active::after {
-  background: var(--accent);
+  background: linear-gradient(180deg, #ffb340, var(--accent));
+  box-shadow: 0 0 6px rgba(255,159,10,0.40);
 }
 /* Sierra: brand/title */
 [data-theme="sierra"] .brand {
   color: var(--text);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.30);
 }
-/* Sierra: ghost 按钮 hover — 橙色微光 */
+/* Sierra: ghost 按钮 hover — 橙色微光 + 精致高光带 */
+[data-theme="sierra"] button.ghost {
+  transition: all var(--dur-fast) var(--ease-out);
+}
 [data-theme="sierra"] button.ghost:hover {
   color: var(--accent);
   background: rgba(255,159,10,0.08);
+  border-color: rgba(255,159,10,0.25);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.30);
 }
 /* Sierra: 链接 = systemOrange */
 [data-theme="sierra"] a {
   color: var(--accent);
 }
-/* Sierra: chip/tag 暖色微橙底 */
+/* Sierra: chip/tag 暖色微橙底 + 顶部高光 */
 [data-theme="sierra"] .chip {
-  border-color: var(--border-soft);
+  border-color: rgba(232,212,190,0.55);
+  background: rgba(255,159,10,0.06);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.40);
+}
+/* Sierra: conv-list hover/active — 玻璃微光 */
+[data-theme="sierra"] #conv-list > li {
+  transition: background var(--dur-fast) var(--ease-out);
+}
+[data-theme="sierra"] #conv-list > li:hover {
   background: rgba(255,159,10,0.06);
 }
-/* Sierra: conv-list hover/active */
-[data-theme="sierra"] #conv-list > li:hover {
-  background: rgba(120,80,40,0.05);
-}
 [data-theme="sierra"] #conv-list > li.active {
-  background: rgba(255,159,10,0.12);
+  background: rgba(255,159,10,0.14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.40);
 }
-/* Sierra: 分段按钮 active 更亮 */
+/* Sierra: 分段按钮 active 更亮 + 高光带 */
 [data-theme="sierra"] .seg-btn.active {
-  background: var(--bg-elev-2);
-  box-shadow: var(--shadow-xs);
+  background: linear-gradient(180deg, #fff8f0 0%, #faeede 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    var(--shadow-xs);
 }
 /* Sierra: 内联代码 — 橙色低饱和底 */
 [data-theme="sierra"] .answer .ic {
@@ -1905,6 +1981,31 @@ button.sm { padding: 3px 8px; font-size: 11px; }
 [data-theme="sierra"] .answer .code {
   background: var(--code-bg);
   border-color: var(--border-soft);
+}
+
+/* Sierra: composer 输入区 — 液态玻璃精致版 */
+[data-theme="sierra"] #composer {
+  background: rgba(255,250,242,0.55);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid rgba(255,255,255,0.50);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 -1px 0 rgba(232,180,120,0.10),
+    0 2px 8px rgba(120,80,40,0.06);
+}
+[data-theme="sierra"] #composer:focus {
+  background: rgba(255,250,242,0.75);
+  border-color: var(--accent);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.65),
+    0 0 0 4px rgba(255,159,10,0.18),
+    0 4px 16px rgba(255,159,10,0.10);
+}
+/* Sierra: typing 指示器 — systemOrange 脉冲 */
+[data-theme="sierra"] .typing i {
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(255,159,10,0.40);
 }
 
 /* Sierra 代码高亮 — Xcode Light 暖色变体(关键词紫色→棕红色,统一暖调) */
