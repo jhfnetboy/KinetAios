@@ -1219,6 +1219,8 @@ function scrollDown() {
 // 主题切换:改 <html data-theme>,变量级切换,所有窗口共享(主/dashboard/files/quick 都用 styles.css)。
 function applyTheme(theme: 'dark' | 'light' | 'aurora' | 'serene' | 'tahoe' | 'sierra' | 'craft' | 'seed'): void {
   document.documentElement.dataset.theme = theme;
+  // SEED 主题切换时重渲小镇(SVG 风格跟随主题) / Re-render town on theme switch (SVG style follows theme)
+  if (currentView === 'town') renderTown();
 }
 
 async function showSettings() {

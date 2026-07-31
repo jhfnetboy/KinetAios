@@ -788,6 +788,303 @@ let onShowWorkbench: (() => void) | null = null;
 let getRemoteNodes: (() => RemoteNodeInfo[]) | null = null;
 let onRemoteTask: ((serverName: string, prompt: string) => Promise<string>) | null = null;
 
+// ═══════════════════════════════════════════════════
+// SEED 高达主题 SVG 生成器 / Gundam SEED-style SVG generators
+// 设计理念:ZAFT 军事基地 — 机甲格纳库(房子)+ Mobile Suit 驾驶员(村民)+
+//   通讯卫星塔(远程节点)。配色严格遵循 Strike Gundam 三色 + ZAFT 绿。
+// 视觉特征:金属装甲板分割线、HUD 发光线条、V-fin 天线、ZAFT 绿光辉。
+// ═══════════════════════════════════════════════════
+
+// ── SEED 配色 / SEED palette ──
+const SEED = {
+  // 机身装甲白 / Gundam frame white
+  white: '#e8ecf0', whiteMid: '#c8d0d8', whiteDark: '#a0aab4', whiteShadow: '#7a8290',
+  // 强袭蓝(胸部/肩甲) / Strike blue
+  blue: '#1a5cb8', blueLight: '#2a7fd8', blueDark: '#0e3d80',
+  // 强袭红(脚部/下巴) / Strike red
+  red: '#c83040', redLight: '#e04858', redDark: '#902030',
+  // 高达黄(V-fin/点缀) / Gundam yellow
+  yellow: '#f5d020', yellowDark: '#c0a010',
+  // ZAFT 绿 / ZAFT green
+  green: '#7fcc19', greenDark: '#4a8a0a',
+  // 金属灰骨架 / Gunmetal skeleton
+  metal: '#3a4048', metalDark: '#22262c', metalLight: '#4a5258',
+  // 驾驶舱绿光 / Cockpit green glow
+  glow: '#7fcc19',
+};
+
+/**
+ * SEED 机甲格纳库 SVG / Gundam SEED hangar SVG
+ * 宽 130 高 125。
+ * 设计:等距军事机库 — 金属装甲板墙壁 + V-fin 天线 + HUD 窗口(引擎色发光) +
+ *   ZAFT 绿光辉边缘 + 装甲分割线。机库门带强化装甲纹理。
+ */
+export function seedHouseSVG(cwd: string, agents: Conversation[], _hue?: number): string {
+  const hasRunning = agents.some((c) => c.status === 'running');
+  const hasError = agents.some((c) => villagerState(c) === 'error');
+
+  // HUD 窗口最多 6 个 / HUD screens (max 6)
+  const maxScreens = 6;
+  const shown = agents.slice(0, maxScreens);
+  const overflow = agents.length - shown.length;
+
+  let screens = '';
+  shown.forEach((conv, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const wx = 74 + col * 22;
+    const wy = 50 + row * 16;
+    const vs = villagerState(conv);
+    const screenColor = vs === 'error' ? SEED.red : vs === 'done' ? SEED.green : SEED.yellow;
+    const lit = vs === 'working' || vs === 'done' || vs === 'error';
+    const darkFill = '#0e1218';
+    // HUD 辉光 / HUD glow
+    const glow = lit
+      ? `<ellipse cx="${wx + 9}" cy="${wy + 5}" rx="14" ry="8" fill="${screenColor}" opacity="0.08"/>`
+      : '';
+    // HUD 屏幕框 / HUD screen frame
+    screens += `${glow}<rect x="${wx}" y="${wy}" width="18" height="10" rx="1" fill="${lit ? screenColor : darkFill}" opacity="${lit ? 0.80 : 0.70}"/>`;
+    // 屏幕边框 / screen border
+    screens += `<rect x="${wx}" y="${wy}" width="18" height="10" rx="1" fill="none" stroke="${SEED.metalLight}" stroke-width="0.6"/>`;
+    // HUD 十字线 / HUD crosshair
+    screens += `<line x1="${wx + 9}" y1="${wy}" x2="${wx + 9}" y2="${wy + 10}" stroke="rgba(0,0,0,0.25)" stroke-width="0.4"/>`;
+    screens += `<line x1="${wx}" y1="${wy + 5}" x2="${wx + 18}" y2="${wy + 5}" stroke="rgba(0,0,0,0.25)" stroke-width="0.4"/>`;
+    // 引擎色点 / engine dot
+    screens += `<circle cx="${wx + 9}" cy="${wy + 5}" r="1.8" fill="${ENGINE_COLORS[conv.engine]}" opacity="${lit ? 0.90 : 0.30}"/>`;
+  });
+
+  if (overflow > 0) {
+    screens += `<text x="94" y="110" font-size="8" fill="${SEED.green}" opacity="0.55" font-family="system-ui" font-weight="700">+${overflow}</text>`;
+  }
+
+  // V-fin 天线(有 running 时旋转) / V-fin antenna (spins when running)
+  const vfin = hasRunning ? `
+    <line x1="65" y1="28" x2="65" y2="16" stroke="${SEED.metal}" stroke-width="1.2"/>
+    <polygon points="60,18 63,16 65,12 67,16 70,18" fill="${SEED.yellow}"/>
+    <rect x="64" y="12" width="2" height="4" fill="${SEED.yellowDark}">
+      <animateTransform attributeName="transform" type="rotate" from="0 65 14" to="360 65 14" dur="3s" repeatCount="indefinite"/>
+    </rect>` : `
+    <line x1="65" y1="28" x2="65" y2="16" stroke="${SEED.metal}" stroke-width="1.2"/>
+    <polygon points="60,18 63,16 65,12 67,16 70,18" fill="${SEED.yellow}" opacity="0.6"/>`;
+
+  // 错误警报 / Error alarm
+  const errorFx = hasError ? `
+    <circle cx="18" cy="24" r="4" fill="${SEED.red}" opacity="0.7">
+      <animate attributeName="opacity" values="0.3;0.7;0.3" dur="1.2s" repeatCount="indefinite"/>
+    </circle>
+    <text x="18" y="26" text-anchor="middle" font-size="6" fill="white" font-weight="bold">!</text>` : '';
+
+  const initial = projName(cwd).charAt(0).toUpperCase();
+
+  return `<svg width="130" height="125" viewBox="0 0 130 125" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="seed-wall-r" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${SEED.whiteMid}"/>
+        <stop offset="100%" stop-color="${SEED.whiteDark}"/>
+      </linearGradient>
+    </defs>
+    <!-- 地基阴影 / ground shadow -->
+    <ellipse cx="65" cy="116" rx="50" ry="6" fill="rgba(0,0,0,0.20)"/>
+    <!-- 左墙(蓝色暗面) / left wall (blue shadow side) -->
+    <polygon points="12,58 65,84 65,112 12,86" fill="${SEED.blueDark}"/>
+    <!-- 左墙装甲分割线 / left wall armor panel lines -->
+    <line x1="12" y1="72" x2="65" y2="98" stroke="${SEED.metalDark}" stroke-width="0.4" opacity="0.6"/>
+    <line x1="38" y1="58" x2="38" y2="98" stroke="${SEED.metalDark}" stroke-width="0.3" opacity="0.4"/>
+    <!-- 右墙(白色亮面,渐变) / right wall (white lit, gradient) -->
+    <polygon points="65,84 118,58 118,86 65,112" fill="url(#seed-wall-r)"/>
+    <!-- 右墙顶部高光 / right wall top highlight -->
+    <polygon points="65,84 118,58 118,61 65,87" fill="rgba(255,255,255,0.06)"/>
+    <!-- 右墙装甲分割线 / right wall armor panel lines -->
+    <line x1="65" y1="72" x2="118" y2="46" stroke="${SEED.metalDark}" stroke-width="0.4" opacity="0.5"/>
+    <line x1="92" y1="58" x2="92" y2="98" stroke="${SEED.metalDark}" stroke-width="0.3" opacity="0.4"/>
+    <!-- 屋顶(蓝色斜面) / roof (blue slope) -->
+    <polygon points="12,58 65,30 65,84" fill="${SEED.blueDark}"/>
+    <polygon points="65,30 118,58 65,84" fill="${SEED.blue}"/>
+    <!-- 屋顶折线高光 / roof edge highlight -->
+    <line x1="65" y1="30" x2="65" y2="84" stroke="rgba(127,204,25,0.15)" stroke-width="0.6"/>
+    <!-- 屋脊(黄色装饰条) / roof ridge (yellow trim) -->
+    <polygon points="61,28 69,28 71,32 59,32" fill="${SEED.blueDark}"/>
+    <rect x="62" y="29" width="6" height="1" fill="${SEED.yellow}" opacity="0.5"/>
+    <!-- ZAFT 绿光辉边缘(底部) / ZAFT green glow edge -->
+    <line x1="12" y1="86" x2="65" y2="112" stroke="${SEED.green}" stroke-width="0.5" opacity="0.25"/>
+    <line x1="65" y1="112" x2="118" y2="86" stroke="${SEED.green}" stroke-width="0.5" opacity="0.25"/>
+    <!-- 机库门 / hangar door -->
+    <polygon points="48,82 48,100 54,103 54,85" fill="${SEED.metalDark}" stroke="${SEED.metal}" stroke-width="0.4"/>
+    <!-- 门上黄色警示条 / door hazard stripes -->
+    <rect x="49" y="90" width="4" height="1" fill="${SEED.yellow}" opacity="0.4"/>
+    <rect x="49" y="93" width="4" height="1" fill="${SEED.yellow}" opacity="0.4"/>
+    <!-- 门牌 / door plate -->
+    <rect x="57" y="84" width="7" height="7" rx="1" fill="${SEED.metal}" opacity="0.7"/>
+    <text x="60.5" y="89.5" text-anchor="middle" font-size="5.5" fill="${SEED.green}" opacity="0.50" font-family="system-ui" font-weight="700">${esc(initial)}</text>
+    ${vfin}
+    ${errorFx}
+    ${screens}
+  </svg>`;
+}
+
+/**
+ * SEED Mobile Suit 驾驶员 SVG / Gundam SEED pilot (chibi Mobile Suit)
+ * 宽 24 高 36。简化 Q 版机甲:V-fin 头部 + 单眼 + 引擎色胸甲。
+ */
+export function seedVillagerSVG(engine: EngineKind, state: VillagerState): string {
+  const engineColor = ENGINE_COLORS[engine];
+  const idle = state === 'idle';
+  const working = state === 'working';
+  const isError = state === 'error';
+
+  // 状态指示 / Status indicators
+  // 错误:红色警报三角形 / Error: red alert triangle
+  const errFx = isError ? `
+    <polygon points="12,-5 8,1 16,1" fill="${SEED.red}" opacity="0.8">
+      <animate attributeName="opacity" values="0.4;0.8;0.4" dur="1.2s" repeatCount="indefinite"/>
+    </polygon>
+    <text x="12" y="-0.5" text-anchor="middle" font-size="4" fill="white" font-weight="bold">!</text>` : '';
+
+  // 工作中:绿色 HUD 扫描点 / Working: green HUD scan dots
+  const workFx = working ? `
+    <circle cx="6" cy="-2" r="1" fill="${SEED.green}">
+      <animate attributeName="opacity" values="0.2;0.9;0.2" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="10" cy="-2" r="1" fill="${SEED.green}">
+      <animate attributeName="opacity" values="0.2;0.9;0.2" dur="1.5s" repeatCount="indefinite" begin="0.3s"/>
+    </circle>
+    <circle cx="14" cy="-2" r="1" fill="${SEED.green}">
+      <animate attributeName="opacity" values="0.2;0.9;0.2" dur="1.5s" repeatCount="indefinite" begin="0.6s"/>
+    </circle>` : '';
+
+  // done:黄色星章 / Done: yellow star
+  const doneFx = state === 'done' ? `
+    <polygon points="12,-3 13.5,-0.5 16,0 13.5,0.5 12,3 10.5,0.5 8,0 10.5,-0.5" fill="${SEED.yellow}" opacity="0.85"/>` : '';
+
+  // 单眼(绿色监视器) / Mono-eye (green sensor)
+  const eye = working
+    ? `<rect x="8" y="6" width="8" height="2" rx="1" fill="${SEED.green}">
+         <animate attributeName="fill" values="${SEED.green};${SEED.yellowDark};${SEED.green}" dur="1s" repeatCount="indefinite"/>
+       </rect>`
+    : `<rect x="8" y="6" width="8" height="2" rx="1" fill="${SEED.green}" opacity="0.70"/>`;
+
+  return `<svg width="24" height="36" viewBox="-2 -6 28 42" xmlns="http://www.w3.org/2000/svg" class="villager-svg state-${state}">
+    ${doneFx}${errFx}${workFx}
+    <!-- 脚(红色装甲) / Feet (red armor) -->
+    <rect x="7" y="29" width="4" height="3" fill="${SEED.red}" rx="0.5"/>
+    <rect x="13" y="29" width="4" height="3" fill="${SEED.redDark}" rx="0.5"/>
+    <!-- 腿(金属骨架) / Legs (gunmetal) -->
+    <rect x="8" y="22" width="3" height="7" fill="${SEED.metal}"/>
+    <rect x="13" y="22" width="3" height="7" fill="${SEED.metalDark}"/>
+    <!-- 身体(白色胸甲 + 引擎色中心) / Body (white chest + engine core) -->
+    <rect x="6" y="13" width="12" height="10" rx="2" fill="${SEED.white}"/>
+    <!-- 胸甲右侧暗影 / chest right shadow -->
+    <rect x="12" y="13" width="6" height="10" rx="2" fill="${SEED.whiteDark}" opacity="0.30"/>
+    <!-- 引擎色核心(胸部驾驶舱) / Engine color core -->
+    <rect x="9" y="15" width="6" height="3" rx="1" fill="${engineColor}" opacity="0.85"/>
+    <rect x="9" y="15" width="6" height="1" rx="1" fill="rgba(255,255,255,0.20)"/>
+    <!-- 肩甲(蓝色) / Shoulder armor (blue) -->
+    <rect x="4" y="13" width="3" height="4" rx="1" fill="${SEED.blue}"/>
+    <rect x="17" y="13" width="3" height="4" rx="1" fill="${SEED.blueDark}"/>
+    <!-- 手臂 / Arms -->
+    <rect x="3" y="17" width="3" height="5" rx="1" fill="${SEED.whiteMid}"/>
+    <rect x="18" y="17" width="3" height="5" rx="1" fill="${SEED.whiteDark}"/>
+    <!-- 颈部 / Neck -->
+    <rect x="10" y="11" width="4" height="2" fill="${SEED.metalDark}"/>
+    <!-- 头部(白色机甲头盔) / Head (white mech helmet) -->
+    <rect x="6" y="3" width="12" height="9" rx="2.5" fill="${SEED.white}"/>
+    <!-- 头部右侧暗 / head right shadow -->
+    <rect x="12" y="3" width="6" height="9" rx="2.5" fill="${SEED.whiteDark}" opacity="0.25"/>
+    <!-- V-fin / V-fin antenna -->
+    <polygon points="12,0 9,3 11,2.5" fill="${SEED.yellow}"/>
+    <polygon points="12,0 15,3 13,2.5" fill="${SEED.yellow}"/>
+    <rect x="11.5" y="0" width="1" height="2" fill="${SEED.yellowDark}"/>
+    ${eye}
+  </svg>`;
+}
+
+/**
+ * SEED 通讯卫星塔 SVG / Gundam SEED comm satellite (remote nodes)
+ * 宽 130 高 150。设计:金属卫星塔 + 太阳能板 + 绿色通讯光环(在线时)。
+ */
+export function seedCloudHouseSVG(name: string, online: boolean, _toolCount: number): string {
+  const sat = online
+    ? { body: SEED.metal, panel: SEED.blue, glow: SEED.green, signal: 0.35 }
+    : { body: SEED.metalDark, panel: SEED.blueDark, glow: SEED.metalLight, signal: 0.10 };
+
+  return `<svg width="130" height="150" viewBox="0 0 130 150" xmlns="http://www.w3.org/2000/svg">
+    <!-- ═══ 通讯光环(在线时绿色脉冲) / Comm ring (green pulse when online) ═══ -->
+    ${online ? `<ellipse cx="65" cy="70" rx="50" ry="12" fill="none" stroke="${SEED.green}" stroke-width="0.6" opacity="0.15">
+      <animate attributeName="rx" values="40;55;40" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.05;0.20;0.05" dur="3s" repeatCount="indefinite"/>
+    </ellipse>` : ''}
+
+    <!-- ═══ 卫星主体 / Satellite body ═══ -->
+    <rect x="52" y="48" width="26" height="40" rx="2" fill="${sat.body}"/>
+    <!-- 主体高光 / body highlight -->
+    <rect x="52" y="48" width="26" height="2" rx="1" fill="${SEED.metalLight}" opacity="0.6"/>
+    <rect x="52" y="48" width="2" height="40" fill="${SEED.metalLight}" opacity="0.4"/>
+    <!-- 主体暗面 / body shadow -->
+    <rect x="76" y="48" width="2" height="40" fill="${SEED.metalDark}"/>
+    <!-- 装甲分割线 / armor panel lines -->
+    <line x1="52" y1="60" x2="78" y2="60" stroke="${SEED.metalDark}" stroke-width="0.4"/>
+    <line x1="52" y1="72" x2="78" y2="72" stroke="${SEED.metalDark}" stroke-width="0.4"/>
+
+    <!-- ═══ 太阳能板 / Solar panels ═══ -->
+    <rect x="14" y="56" width="34" height="18" fill="${sat.panel}" rx="0.5"/>
+    <rect x="82" y="56" width="34" height="18" fill="${sat.panel}" rx="0.5" opacity="0.85"/>
+    <!-- 太阳能板网格 / solar panel grid lines -->
+    <line x1="14" y1="62" x2="48" y2="62" stroke="rgba(0,0,0,0.3)" stroke-width="0.4"/>
+    <line x1="14" y1="68" x2="48" y2="68" stroke="rgba(0,0,0,0.3)" stroke-width="0.4"/>
+    <line x1="22" y1="56" x2="22" y2="74" stroke="rgba(0,0,0,0.3)" stroke-width="0.4"/>
+    <line x1="31" y1="56" x2="31" y2="74" stroke="rgba(0,0,0,0.3)" stroke-width="0.4"/>
+    <line x1="40" y1="56" x2="40" y2="74" stroke="rgba(0,0,0,0.3)" stroke-width="0.4"/>
+    <line x1="82" y1="62" x2="116" y2="62" stroke="rgba(0,0,0,0.3)" stroke-width="0.4"/>
+    <line x1="82" y1="68" x2="116" y2="68" stroke="rgba(0,0,0,0.3)" stroke-width="0.4"/>
+    <line x1="90" y1="56" x2="90" y2="74" stroke="rgba(0,0,0,0.3)" stroke-width="0.4"/>
+    <line x1="99" y1="56" x2="99" y2="74" stroke="rgba(0,0,0,0.3)" stroke-width="0.4"/>
+    <line x1="108" y1="56" x2="108" y2="74" stroke="rgba(0,0,0,0.3)" stroke-width="0.4"/>
+
+    <!-- ═══ 天线 / Antenna ═══ -->
+    <line x1="65" y1="48" x2="65" y2="36" stroke="${SEED.metal}" stroke-width="1.2"/>
+    <circle cx="65" cy="34" r="2" fill="${online ? SEED.green : SEED.metalLight}">
+      ${online ? `<animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"/>` : ''}
+    </circle>
+    <polygon points="61,36 63,34 65,30 67,34 69,36" fill="${SEED.yellow}" opacity="${online ? 0.8 : 0.3}"/>
+
+    <!-- ═══ 窗口(HUD 绿) / HUD windows ═══ -->
+    <rect x="56" y="62" width="8" height="5" rx="1" fill="${online ? SEED.green : '#1a1e26'}" opacity="${online ? 0.75 : 0.40}"/>
+    <rect x="56" y="62" width="8" height="5" rx="1" fill="none" stroke="${SEED.metalLight}" stroke-width="0.4"/>
+    <rect x="66" y="62" width="8" height="5" rx="1" fill="${online ? SEED.green : '#1a1e26'}" opacity="${online ? 0.50 : 0.25}"/>
+    <rect x="66" y="62" width="8" height="5" rx="1" fill="none" stroke="${SEED.metalLight}" stroke-width="0.4"/>
+
+    <!-- ═══ 驱动器(底部) / Thrusters (bottom) ═══ -->
+    <rect x="55" y="88" width="6" height="6" fill="${SEED.metalDark}" rx="0.5"/>
+    <rect x="69" y="88" width="6" height="6" fill="${SEED.metalDark}" rx="0.5"/>
+    ${online ? `<ellipse cx="58" cy="96" rx="3" ry="4" fill="${SEED.green}" opacity="0.12">
+      <animate attributeName="opacity" values="0.06;0.16;0.06" dur="2s" repeatCount="indefinite"/>
+    </ellipse>
+    <ellipse cx="72" cy="96" rx="3" ry="4" fill="${SEED.green}" opacity="0.12">
+      <animate attributeName="opacity" values="0.06;0.16;0.06" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+    </ellipse>` : ''}
+
+    <!-- ═══ 数据流(在线时绿色下传光束) / Data beam (green download when online) ═══ -->
+    ${online ? `<line x1="65" y1="94" x2="65" y2="140" stroke="${SEED.green}" stroke-width="0.5" opacity="0.10" stroke-dasharray="2 3">
+      <animate attributeName="stroke-dashoffset" values="0;-10" dur="1s" repeatCount="indefinite"/>
+    </line>` : ''}
+
+    <!-- ═══ 地面阴影 / Ground shadow ═══ -->
+    <ellipse cx="65" cy="142" rx="30" ry="4" fill="rgba(0,0,0,0.15)"/>
+  </svg>`;
+}
+
+// ── 检测当前是否应显示 SEED 风格 / Detect if SEED style should be shown ──
+// townStyle = minecraft 时优先 MC 风格;否则 theme = seed 时用 SEED 风格。
+function isSeedTheme(): boolean {
+  return document.documentElement.dataset.theme === 'seed';
+}
+/** 获取有效 SVG 风格 / Get effective SVG style */
+function effStyle(): 'classic' | 'minecraft' | 'seed' {
+  if (townStyle === 'minecraft') return 'minecraft';
+  if (isSeedTheme()) return 'seed';
+  return 'classic';
+}
+
 export interface TownCallbacks {
   send: (id: string, text: string) => void;
   cancel: (id: string) => void;
@@ -870,7 +1167,7 @@ export function renderTown(): void {
 
       houses += `<div class="town-house" data-cwd="${esc(cwd)}" data-idx="${idx}" style="--house-hue:${hue}">
         <div class="house-roof-label">${esc(proj)}</div>
-        <div class="house-svg">${townStyle === 'minecraft' ? mcHouseSVG(cwd, agents, hue) : houseSVG(cwd, agents, hue)}</div>
+        <div class="house-svg">${effStyle() === 'minecraft' ? mcHouseSVG(cwd, agents, hue) : effStyle() === 'seed' ? seedHouseSVG(cwd, agents, hue) : houseSVG(cwd, agents, hue)}</div>
         <div class="house-sign">
           <span class="house-stats">${esc(stats.join(' · '))}</span>
           <span class="house-last ${running ? 'running' : ''}">${esc(when)}</span>
@@ -880,7 +1177,7 @@ export function renderTown(): void {
             const vs = villagerState(c);
             const label = c.customTitle || c.turns[0]?.prompt?.slice(0, 16) || '…';
             return `<div class="villager-wrap vs-${vs}" data-conv-id="${esc(c.id)}" data-engine="${c.engine}" title="${esc(label)}">
-              ${townStyle === 'minecraft' ? mcVillagerSVG(c.engine, vs) : villagerSVG(c.engine, vs)}
+              ${effStyle() === 'minecraft' ? mcVillagerSVG(c.engine, vs) : effStyle() === 'seed' ? seedVillagerSVG(c.engine, vs) : villagerSVG(c.engine, vs)}
               <span class="villager-name">${esc(label)}</span>
             </div>`;
           }).join('')}
@@ -906,7 +1203,7 @@ export function renderTown(): void {
       const statusText = node.online ? tr('town.remoteOnline') : tr('town.remoteOffline');
       remoteHTML += `<div class="town-house town-remote ${statusCls}" data-remote-name="${esc(node.name)}">
         <div class="house-roof-label">${ICON_CLOUD_SMALL} ${esc(node.name)}</div>
-        <div class="house-svg">${townStyle === 'minecraft' ? mcCloudHouseSVG(node.name, node.online, node.toolCount) : cloudHouseSVG(node.name, node.online, node.toolCount)}</div>
+        <div class="house-svg">${effStyle() === 'minecraft' ? mcCloudHouseSVG(node.name, node.online, node.toolCount) : effStyle() === 'seed' ? seedCloudHouseSVG(node.name, node.online, node.toolCount) : cloudHouseSVG(node.name, node.online, node.toolCount)}</div>
         <div class="house-sign">
           <span class="house-stats ${statusCls}">${esc(statusText)}</span>
           <span class="house-last">${node.online ? esc(tr('town.remoteTools', { n: node.toolCount })) : esc(node.url || '')}</span>
@@ -1109,7 +1406,7 @@ function refreshTownPanel(): void {
   const statusNote = conv.statusNote ? `<div class="tp-status-note">${esc(conv.statusNote)}</div>` : '';
 
   panel.innerHTML = `<div class="tp-head">
-    <span class="tp-villager">${townStyle === 'minecraft' ? mcVillagerSVG(conv.engine, vs) : villagerSVG(conv.engine, vs)}</span>
+    <span class="tp-villager">${effStyle() === 'minecraft' ? mcVillagerSVG(conv.engine, vs) : effStyle() === 'seed' ? seedVillagerSVG(conv.engine, vs) : villagerSVG(conv.engine, vs)}</span>
     <div class="tp-info">
       <div class="tp-name">${esc(conv.customTitle || projName(conv.cwd))}</div>
       <div class="tp-engine">${esc(conv.engine)} · <span class="tp-state vs-${vs}">${esc(stateLabel)}</span></div>
@@ -1177,7 +1474,7 @@ export function refreshTownVillager(conv: Conversation): void {
   wrap.querySelector('.villager-name')!.textContent = label;
   const svgContainer = wrap.querySelector('.villager-svg');
   if (svgContainer) {
-    svgContainer.outerHTML = townStyle === 'minecraft' ? mcVillagerSVG(engine, vs) : villagerSVG(engine, vs);
+    svgContainer.outerHTML = effStyle() === 'minecraft' ? mcVillagerSVG(engine, vs) : effStyle() === 'seed' ? seedVillagerSVG(engine, vs) : villagerSVG(engine, vs);
   }
   // 更新所属房子的窗户和统计 / Update house windows and stats
   const house = wrap.closest('.town-house') as HTMLElement | null;
@@ -1187,7 +1484,7 @@ export function refreshTownVillager(conv: Conversation): void {
       const ids = getOrder().filter((id) => getConvs!().get(id)?.cwd === cwd);
       const agents = ids.map((id) => getConvs!().get(id)!).filter(Boolean);
       const houseSvgEl = house.querySelector('.house-svg');
-      if (houseSvgEl) houseSvgEl.innerHTML = townStyle === 'minecraft' ? mcHouseSVG(cwd, agents, hashHue(cwd)) : houseSVG(cwd, agents, hashHue(cwd));
+      if (houseSvgEl) houseSvgEl.innerHTML = effStyle() === 'minecraft' ? mcHouseSVG(cwd, agents, hashHue(cwd)) : effStyle() === 'seed' ? seedHouseSVG(cwd, agents, hashHue(cwd)) : houseSVG(cwd, agents, hashHue(cwd));
       let totalTokens = 0, totalCost = 0, lastTs = 0, running = false;
       for (const c of agents) {
         totalTokens += c.tokens; totalCost += c.cost;
