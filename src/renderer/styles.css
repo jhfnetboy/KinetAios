@@ -351,60 +351,66 @@
    对标 macOS Tahoe 26: 纯黑底 + 系统蓝 + 透明层级 + 精致材质
    ═══════════════════════════════════════════════════════════════════════ */
 [data-theme="tahoe"] {
-  /* ── Apple HIG Dark Mode 系统色 ── */
-  --bg:          #000000;              /* 纯黑底,对标 macOS Tahoe .windowBackgroundColor dark */
-  --bg-side:     #0a0a0c;              /* 侧栏:微亮于纯黑(Apple sidebar dark = #1c1c1e 级别,但 Tahoe 更深) */
-  --bg-elev:     #1c1c1e;              /* 卡片层 = NSColor.systemGray6 dark(Apple 精确值) */
-  --bg-elev-2:   #2c2c2e;              /* hover 层 = systemGray5 dark */
-  --bg-input:    #1c1c1e;             /* 输入框底色 */
-  --border:      #38383a;             /* separator dark = #38383a(Apple 精确值) */
-  --border-soft: #2c2c2e;             /* 比 separator 更柔和,用于卡片内边框 */
-  --text:        #ffffff;             /* labelColor dark = 纯白 */
-  --text-dim:    #ebebf599;          /* secondaryLabelColor dark = rgba(235,235,245,0.6) */
-  --text-faint:  #ebebf54d;          /* tertiaryLabelColor dark = rgba(235,235,245,0.3) */
-  --accent:      #0a84ff;            /* systemBlue dark = #0A84FF(Apple 精确值) */
+  /* ── Tahoe Liquid Glass: 深蓝黑底 + 多层渐变 ──
+     不是纯黑!底色带极深蓝调,配合 body 上的多层彩色渐变,
+     毛玻璃组件能透出底层色彩,才是真正的"液态玻璃"效果。 */
+  --bg:          #06121f;              /* 深海蓝黑(不是纯黑),给毛玻璃提供色彩基底 */
+  --bg-side:     #04101c;              /* 侧栏:更深一档,沉浸感 */
+  --bg-elev:     #0c1d2e;              /* 卡片层:蓝灰,透出底色渐变 */
+  --bg-elev-2:   #112538;             /* hover 层 */
+  --bg-input:    #0a1a2a;             /* 输入框底色 */
+  --border:      #1d3a52;             /* 蓝调边框,不是灰调 */
+  --border-soft: #142a3e;             /* 柔和内边框 */
+  --text:        #eaf2fb;             /* 带蓝调的纯白(Apple labelColor dark) */
+  --text-dim:    #92acca;            /* 蓝灰二级文字 */
+  --text-faint:  #506e8a;            /* 蓝灰三级文字 */
+  --accent:      #0a84ff;            /* systemBlue dark(Apple 精确值) */
   --accent-dim:  #0a84ff66;         /* 系统蓝 40% 透明 */
-  --accent-glow: rgba(10,132,255,0.15);
-  --accent-fg:   #ffffff;            /* 蓝色按钮上的文字色 */
-  --ok:          #30d158;            /* systemGreen dark = #30D158 */
-  --err:         #ff453a;            /* systemRed dark = #FF453A */
-  --run:         #0a84ff;            /* 运行状态 = 系统蓝 */
-  --code-bg:     #0a0a0c;           /* 代码块底色 */
+  --accent-glow: rgba(10,132,255,0.20);
+  --accent-fg:   #ffffff;
+  --ok:          #30d158;            /* systemGreen dark */
+  --err:         #ff453a;            /* systemRed dark */
+  --run:         #0a84ff;
+  --code-bg:     #04101c;           /* 代码块底色 */
   --bg-2:        var(--bg-elev);
   --danger:      var(--err);
-  --warn:        #ffd60a;            /* systemYellow dark = #FFD60A */
+  --warn:        #ffd60a;
 
   /* ── Tahoe 专属:液态玻璃参数 ── */
-  --glass-bg:       rgba(28,28,30,0.72);     /* 毛玻璃基底(systemGray6 with alpha) */
-  --glass-bg-hover: rgba(44,44,46,0.72);     /* hover 毛玻璃 */
-  --glass-blur:     20px;                    /* 强模糊,对标 Apple .regularMaterial */
-  --glass-blur-lg:  30px;                    /* 更强模糊,对标 .ultraThinMaterial */
+  --glass-bg:       rgba(12,29,46,0.55);     /* 半透明蓝灰(低不透明度,才能透出底色) */
+  --glass-bg-hover: rgba(17,37,56,0.60);     /* hover 半透明 */
+  --glass-blur:     24px;                    /* 强模糊(对标 Apple .regularMaterial) */
+  --glass-blur-lg:  40px;                    /* 超强模糊 */
 
-  /* ── 投影系统:Apple Materials 风格 ── */
-  /* Tahoe 投影更深邃,模拟 macOS Tahoe 的层级深度感 */
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.60);
-  --shadow-sm: 0 2px 8px rgba(0,0,0,0.50), 0 1px 2px rgba(0,0,0,0.40);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.55), 0 2px 4px rgba(0,0,0,0.40);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.60), 0 4px 12px rgba(0,0,0,0.42);
-  --shadow-xl: 0 24px 64px rgba(0,0,0,0.70), 0 8px 24px rgba(0,0,0,0.48);
+  /* ── 投影:深蓝调(Apple Materials 深色投影) ── */
+  --shadow-xs: 0 1px 2px rgba(0,8,20,0.60);
+  --shadow-sm: 0 2px 8px rgba(0,8,20,0.50), 0 1px 2px rgba(0,8,20,0.40);
+  --shadow-md: 0 4px 16px rgba(0,8,20,0.55), 0 2px 4px rgba(0,8,20,0.40);
+  --shadow-lg: 0 8px 32px rgba(0,8,20,0.60), 0 4px 12px rgba(0,8,20,0.42);
+  --shadow-xl: 0 24px 64px rgba(0,8,20,0.70), 0 8px 24px rgba(0,8,20,0.48);
   --shadow-accent: 0 4px 20px rgba(10,132,255,0.35);
-  --shadow-focus: 0 0 0 4px rgba(10,132,255,0.20);
+  --shadow-focus: 0 0 0 4px rgba(10,132,255,0.25);
 
-  /* ── 连续圆角(Apple continuous corner 感觉) ── */
-  /* Tahoe 比 dark 更圆润,贴合 macOS Tahoe 设计 */
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 14px;
 }
-/* Tahoe: body 纯黑 + 微妙蓝色环境光 — 模拟 macOS Tahoe 桌面的深邃感 */
+/* Tahoe: 多层彩色渐变背景 — 模拟 macOS Tahoe 动态壁纸的色光氛围
+   毛玻璃组件(backdrop-filter)透出这些色彩,才是"液态玻璃"的视觉关键。
+   底色深蓝黑 + 系统蓝/青/紫 大面积光晕,缓慢飘移(20s 无限循环)。 */
 [data-theme="tahoe"] body {
   background:
-    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(10,132,255,0.06), transparent 50%),
+    radial-gradient(ellipse 60% 50% at 15% 20%, rgba(10,132,255,0.12), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 85% 15%, rgba(94,92,230,0.10), transparent 50%),
+    radial-gradient(ellipse 55% 45% at 75% 80%, rgba(0,199,190,0.08), transparent 55%),
+    radial-gradient(ellipse 45% 50% at 20% 75%, rgba(191,90,242,0.07), transparent 50%),
     var(--bg);
 }
-/* Tahoe: 侧边栏 — 纯黑 + 顶部系统蓝光带(Apple Sidebar 风格) */
+/* Tahoe: 侧边栏 — 深色半透明,透出底色渐变,顶部系统蓝光带 */
 [data-theme="tahoe"] #sidebar {
-  background: var(--bg-side);
+  background: rgba(4,16,28,0.80);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   position: relative;
 }
 [data-theme="tahoe"] #sidebar::before {
@@ -416,7 +422,8 @@
   opacity: .5;
   z-index: 1;
 }
-/* Tahoe: 全局毛玻璃 — 卡片/面板/气泡/设置页使用 glass-bg + blur */
+/* Tahoe: 全局毛玻璃 — 卡片/面板/气泡/设置页使用低透明度 glass-bg + 强 blur,
+   半透明才能透出 body 的彩色渐变,体现真正的液态玻璃质感。 */
 [data-theme="tahoe"] .msg .bubble,
 [data-theme="tahoe"] .modal-card,
 [data-theme="tahoe"] .ctx-insp-card,
@@ -430,8 +437,8 @@
 [data-theme="tahoe"] .tpl-card,
 [data-theme="tahoe"] .ctool-card {
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
 }
 /* Tahoe: 主按钮 — 系统蓝 + 微光晕(Apple Default Button dark) */
 [data-theme="tahoe"] button.primary {
@@ -468,11 +475,12 @@
   border: none;
   box-shadow: 0 2px 12px rgba(10,132,255,.20);
 }
-/* Tahoe: AI 气泡 — 毛玻璃感(更透明) */
+/* Tahoe: AI 气泡 — 更透明的毛玻璃,让底色渐变透出来 */
 [data-theme="tahoe"] .msg .bubble {
-  background: rgba(28,28,30,0.80);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  background: rgba(12,29,46,0.50);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border-color: rgba(29,58,82,0.60);
 }
 /* Tahoe: 滚动条 — 细、暗、hover 变系统蓝 */
 [data-theme="tahoe"] ::-webkit-scrollbar-thumb {
