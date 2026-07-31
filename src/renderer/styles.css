@@ -1712,6 +1712,221 @@ button.sm { padding: 3px 8px; font-size: 11px; }
 [data-theme="tahoe"] .tok-link      { color: var(--accent); }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   Sierra 主题 — 暖色调液态玻璃 / Warm Liquid Glass
+   灵感:macOS Sierra 时代的温暖金色阳光 + Liquid Glass 材质。
+   底色暖白象牙色,body 铺大面积日落渐变(橙/粉/金/珊瑚),
+   玻璃组件半透明白雾 + 强 blur,透出底层暖色光晕。
+   Accent = systemOrange (#FF9F0A),对标 Apple HIG 暖色体系。
+   ═══════════════════════════════════════════════════════════════════════ */
+[data-theme="sierra"] {
+  --bg:          #faf3ea;              /* 暖白象牙色(温暖底色,不是冷白) */
+  --bg-side:     #f4eadc;              /* 侧栏:稍深的暖灰白 */
+  --bg-elev:     #fff8f0;             /* 卡片层:暖白 */
+  --bg-elev-2:   #faeede;             /* hover 层 */
+  --bg-input:    #fff8f0;             /* 输入框底色 */
+  --border:      #e8d4be;             /* 暖调边框(米色) */
+  --border-soft: #f0e0cc;             /* 柔和内边框 */
+  --text:        #2d1810;             /* 深棕色文字(高对比度,暖调) */
+  --text-dim:    #7a5c42;            /* 暖灰二级文字 */
+  --text-faint:  #b09880;            /* 暖灰三级文字 */
+  --accent:      #ff9f0a;            /* systemOrange(Apple HIG 精确值) */
+  --accent-dim:  #ff9f0a33;         /* 橙 20% 透明 */
+  --accent-glow: rgba(255,159,10,0.20);
+  --accent-fg:   #ffffff;
+  --ok:          #28cd41;            /* systemGreen light */
+  --err:         #ff3b30;            /* systemRed light */
+  --run:         #ff9f0a;
+  --code-bg:     #faf0e0;           /* 代码块底色(暖色) */
+  --bg-2:        var(--bg-elev);
+  --danger:      var(--err);
+  --warn:        #ff9f0a;
+
+  /* ── Sierra 专属:液态玻璃参数 ── */
+  --glass-bg:       rgba(255,250,242,0.55);   /* 半透明暖白雾(核心!) */
+  --glass-bg-hover: rgba(255,248,240,0.65);
+  --glass-blur:     28px;
+  --glass-blur-lg:  44px;
+
+  /* ── 投影:暖调阴影 ── */
+  --shadow-xs: 0 1px 2px rgba(120,80,40,0.06);
+  --shadow-sm: 0 2px 8px rgba(120,80,40,0.08), 0 1px 2px rgba(120,80,40,0.05);
+  --shadow-md: 0 4px 16px rgba(120,80,40,0.10), 0 2px 4px rgba(120,80,40,0.06);
+  --shadow-lg: 0 8px 32px rgba(120,80,40,0.12), 0 4px 12px rgba(120,80,40,0.08);
+  --shadow-xl: 0 24px 64px rgba(120,80,40,0.16), 0 8px 24px rgba(120,80,40,0.10);
+  --shadow-accent: 0 4px 20px rgba(255,159,10,0.30);
+  --shadow-focus: 0 0 0 4px rgba(255,159,10,0.22);
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+/* Sierra: 暖色渐变背景 — 模拟日落金色光晕
+   大面积柔和暖色块(橙/粉/金/珊瑚),玻璃组件透出这些色彩。 */
+[data-theme="sierra"] body {
+  background:
+    radial-gradient(ellipse 55% 45% at 12% 18%, rgba(255,159,10,0.16), transparent 55%),
+    radial-gradient(ellipse 45% 40% at 88% 12%, rgba(255,105,150,0.10), transparent 50%),
+    radial-gradient(ellipse 50% 45% at 78% 82%, rgba(255,179,64,0.12), transparent 55%),
+    radial-gradient(ellipse 40% 50% at 15% 78%, rgba(220,120,160,0.08), transparent 50%),
+    var(--bg);
+}
+/* Sierra: 侧边栏 — 半透明暖白雾玻璃 */
+[data-theme="sierra"] #sidebar {
+  background: rgba(255,250,242,0.45);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border-right-color: rgba(232,212,190,0.60);
+  position: relative;
+}
+[data-theme="sierra"] #sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: .4;
+  z-index: 1;
+}
+/* Sierra: 全局毛玻璃 — 卡片/面板/气泡/设置页 */
+[data-theme="sierra"] .msg .bubble,
+[data-theme="sierra"] .modal-card,
+[data-theme="sierra"] .ctx-insp-card,
+[data-theme="sierra"] .modal-box,
+[data-theme="sierra"] .inspect-modal,
+[data-theme="sierra"] .cron-edit-card,
+[data-theme="sierra"] #settings-view,
+[data-theme="sierra"] .s-section,
+[data-theme="sierra"] #wb .card,
+[data-theme="sierra"] .cost-card,
+[data-theme="sierra"] .tpl-card,
+[data-theme="sierra"] .ctool-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+}
+/* Sierra: 主按钮 — systemOrange + 微光晕 */
+[data-theme="sierra"] button.primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: none;
+  box-shadow: 0 2px 8px rgba(255,159,10,.25);
+}
+[data-theme="sierra"] button.primary:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 16px rgba(255,159,10,.35);
+}
+[data-theme="sierra"] button.primary:active {
+  filter: brightness(0.92);
+  transform: scale(0.97);
+}
+/* Sierra: 焦点态 — systemOrange focus ring */
+[data-theme="sierra"] input:focus,
+[data-theme="sierra"] textarea:focus,
+[data-theme="sierra"] select:focus {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+}
+/* Sierra: 输入框 hover 边框微亮 */
+[data-theme="sierra"] input:hover,
+[data-theme="sierra"] textarea:hover,
+[data-theme="sierra"] select:hover {
+  border-color: var(--text-faint);
+}
+/* Sierra: 用户气泡 — systemOrange 渐变(iMessage 暖色版) */
+[data-theme="sierra"] .msg.user .bubble {
+  background: linear-gradient(135deg, var(--accent), #ffb340);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 12px rgba(255,159,10,.20);
+}
+/* Sierra: AI 气泡 — 半透明暖白雾玻璃 */
+[data-theme="sierra"] .msg .bubble {
+  background: rgba(255,250,242,0.50);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+  border-color: rgba(232,212,190,0.50);
+}
+/* Sierra: 滚动条 — 暖底配棕色滚动条 */
+[data-theme="sierra"] ::-webkit-scrollbar-thumb {
+  background: rgba(120,80,40,0.18);
+}
+[data-theme="sierra"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,159,10,0.40);
+}
+/* Sierra: 状态点用系统色 */
+[data-theme="sierra"] .dot.ready { background: var(--ok); box-shadow: 0 0 8px rgba(48,209,88,.3); }
+[data-theme="sierra"] .dot.running { background: var(--accent); box-shadow: 0 0 8px rgba(255,159,10,.3); }
+/* Sierra: active 会话 — systemOrange 底 */
+[data-theme="sierra"] .cht.active,
+[data-theme="sierra"] .conv-item.active {
+  color: var(--accent);
+  background: rgba(255,159,10,0.12);
+}
+[data-theme="sierra"] .cht.active::after,
+[data-theme="sierra"] .conv-item.active::after {
+  background: var(--accent);
+}
+/* Sierra: brand/title */
+[data-theme="sierra"] .brand {
+  color: var(--text);
+}
+/* Sierra: ghost 按钮 hover — 橙色微光 */
+[data-theme="sierra"] button.ghost:hover {
+  color: var(--accent);
+  background: rgba(255,159,10,0.08);
+}
+/* Sierra: 链接 = systemOrange */
+[data-theme="sierra"] a {
+  color: var(--accent);
+}
+/* Sierra: chip/tag 暖色微橙底 */
+[data-theme="sierra"] .chip {
+  border-color: var(--border-soft);
+  background: rgba(255,159,10,0.06);
+}
+/* Sierra: conv-list hover/active */
+[data-theme="sierra"] #conv-list > li:hover {
+  background: rgba(120,80,40,0.05);
+}
+[data-theme="sierra"] #conv-list > li.active {
+  background: rgba(255,159,10,0.12);
+}
+/* Sierra: 分段按钮 active 更亮 */
+[data-theme="sierra"] .seg-btn.active {
+  background: var(--bg-elev-2);
+  box-shadow: var(--shadow-xs);
+}
+/* Sierra: 内联代码 — 橙色低饱和底 */
+[data-theme="sierra"] .answer .ic {
+  background: rgba(255,159,10,0.08);
+  border-color: rgba(255,159,10,0.15);
+  color: var(--accent);
+}
+[data-theme="sierra"] .answer .code {
+  background: var(--code-bg);
+  border-color: var(--border-soft);
+}
+
+/* Sierra 代码高亮 — Xcode Light 暖色变体(关键词紫色→棕红色,统一暖调) */
+[data-theme="sierra"] .tok-keyword   { color: #ad3da4; }
+[data-theme="sierra"] .tok-string    { color: #c0381b; }
+[data-theme="sierra"] .tok-comment   { color: var(--text-faint); }
+[data-theme="sierra"] .tok-number    { color: #9a6700; }
+[data-theme="sierra"] .tok-function  { color: #8a5a00; }
+[data-theme="sierra"] .tok-class     { color: #703daa; }
+[data-theme="sierra"] .tok-tag       { color: #ad3da4; }
+[data-theme="sierra"] .tok-attr      { color: #8a5a00; }
+[data-theme="sierra"] .tok-variable  { color: var(--text); }
+[data-theme="sierra"] .tok-property  { color: #8a5a00; }
+[data-theme="sierra"] .tok-selector  { color: #8a5a00; }
+[data-theme="sierra"] .tok-atrule    { color: #ad3da4; }
+[data-theme="sierra"] .tok-header    { color: #703daa; }
+[data-theme="sierra"] .tok-codeblock { color: var(--text); }
+[data-theme="sierra"] .tok-inlinecode{ color: var(--accent); }
+[data-theme="sierra"] .tok-key       { color: #ad3da4; }
+[data-theme="sierra"] .tok-link      { color: var(--accent); }
+
+/* ═══════════════════════════════════════════════════════════════════════
    Visual Inspector — 圈选标注模态框 / Inspect annotation modal
    ═══════════════════════════════════════════════════════════════════════ */
 

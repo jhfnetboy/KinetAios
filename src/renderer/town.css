@@ -488,6 +488,11 @@
   --town-sky-bottom: #c8d8ee;
   --town-hover: rgba(10,132,255,0.06);
 }
+[data-theme="sierra"] {
+  --town-sky-top: #faf3ea;
+  --town-sky-bottom: #f4eadc;
+  --town-hover: rgba(255,159,10,0.06);
+}
 
 /* ── 响应式 / Responsive ── */
 @media (max-width: 700px) {

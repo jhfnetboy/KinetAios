@@ -63,7 +63,7 @@ export type AppSettings = {
   priceOutPerMTok: number;
   presetId: string;
   lang: Lang; // UI 语言(en / zh-CN / zh-TW / ja),默认 zh-CN;给模型看的字符串不译
-  theme: 'dark' | 'light' | 'aurora' | 'serene' | 'tahoe'; // 暗 / 淡色 / 极光 / 高雅淡色 / Tahoe 液态玻璃主题
+  theme: 'dark' | 'light' | 'aurora' | 'serene' | 'tahoe' | 'sierra'; // 暗 / 淡色 / 极光 / 高雅淡色 / Tahoe 液态玻璃 / Sierra 暖色液态玻璃
   // ── 模型配置档:保存多套完整 LLM 配置(含 apiKey/baseURL/model/protocol 等),聊天界面可快速切换 ──
   // 当前生效的配置 = 活跃 profile(若有),否则回退到全局 apiKey/baseURL/model 等(向后兼容)。
   modelProfiles: ModelProfile[];
