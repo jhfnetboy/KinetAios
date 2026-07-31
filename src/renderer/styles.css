@@ -985,8 +985,8 @@ a { color: var(--accent); }
 
 .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-faint); gap: 6px; }
 
-/* settings */
-#settings { padding: 28px 24px 48px; overflow-y: auto; max-width: 720px; margin: 0 auto; }
+/* settings — scrollbar-gutter:stable 预留滚动条空间,切换 tab 时不会因滚动条出现/消失导致宽度跳变 */
+#settings { padding: 28px 24px 48px; overflow-y: auto; max-width: 720px; margin: 0 auto; scrollbar-gutter: stable; }
 #settings .card { width: 100%; max-width: 620px; box-sizing: border-box; }
 #settings h2 { margin: 0 0 4px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
 #settings .sub { color: var(--text-dim); margin-bottom: 20px; font-size: 13px; line-height: 1.6; }
