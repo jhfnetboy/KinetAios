@@ -694,7 +694,7 @@ a { color: var(--accent); }
 #plugin-panels-container .plugin-panel-view.active { display: flex; flex: 1; min-height: 0; }
 #plugin-panels-container .plugin-panel-view iframe { flex: 1; width: 100%; height: 100%; border: none; min-height: 0; }
 /* 需要自身滚动的视图(无内层滚动容器的) */
-#timeline-view, #ctools-view, #cost-view, #pipeline-view, #templates-view, #settings-view, #workbench-view { overflow-y: auto; }
+#timeline-view, #ctools-view, #cost-view, #pipeline-view, #templates-view, #workbench-view { overflow-y: auto; }
 /* chat-view 不滚动 — 内部 #turns 自己滚 */
 #chat-view { overflow: hidden; }
 
@@ -988,14 +988,15 @@ a { color: var(--accent); }
 /* settings — scrollbar-gutter:stable 预留滚动条空间,切换 tab 时不会因滚动条出现/消失导致宽度跳变。
    注意:overflow-y 必须在 #settings 上(而非 #settings-view),否则两层滚动条竞争导致宽度跳变。 */
 #settings-view { overflow: hidden; }
-#settings { padding: 28px 24px 48px; overflow-y: auto; max-width: 720px; margin: 0 auto; scrollbar-gutter: stable; height: 100%; }
-#settings .card { width: 100%; max-width: 620px; box-sizing: border-box; }
+#settings { padding: 28px 24px 48px; overflow-y: auto; max-width: 720px; margin: 0 auto; scrollbar-gutter: stable; flex: 1; min-height: 0; }
+#settings .card { width: 100%; max-width: 620px; box-sizing: border-box; overflow: hidden; }
 #settings h2 { margin: 0 0 4px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
 #settings .sub { color: var(--text-dim); margin-bottom: 20px; font-size: 13px; line-height: 1.6; }
 /* 设置页 tab 导航(模型/行为/高级/多机协作) */
 .s-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
-.s-tab { padding: 8px 16px; font-size: 13px; border: none; background: none; color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent; transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
+.s-tab { padding: 8px 16px; font-size: 13px; border: none; background: none; color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent; transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); flex-shrink: 0; white-space: nowrap; }
 .s-tab:hover { color: var(--text); }
+.s-tab:focus { outline: none; }
 .s-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 /* 设置页 tab 面板:纯 display 切换,无动画(避免 Chromium display_lock 崩溃)。 */
 .s-tab-panel { }
