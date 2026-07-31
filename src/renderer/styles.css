@@ -1995,7 +1995,62 @@ button.sm { padding: 3px 8px; font-size: 11px; }
     radial-gradient(circle at 75% 75%, rgba(0,0,0,0.05) 1px, transparent 2px);
   background-size: 32px 32px, 32px 32px, 8px 8px, 6px 6px;
 }
-/* Craft: 侧边栏 — 深色石砖 + 右侧凸起边 */
+
+/* Craft: 背景装饰角色 — 用 ::before/::after 伪元素放 Minecraft 经典角色
+   纯像素 SVG data URI,零网络请求。
+   ::before = 左下角 Steve 像素人 + 右下角 Creeper
+   ::after  = 右上角猪 + 左上角末影人
+   角色 opacity 很低,不干扰阅读,营造"方块世界有人住"的氛围。 */
+[data-theme="craft"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    /* ── Steve(左下角)— 8x8 像素简化版 ── */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 8 8' shape-rendering='crispEdges'><rect x='2' y='1' width='4' height='1' fill='%235a3a1a'/><rect x='1' y='2' width='6' height='3' fill='%23c8a060'/><rect x='2' y='2' width='1' height='1' fill='%235a3a1a'/><rect x='5' y='2' width='1' height='1' fill='%235a3a1a'/><rect x='3' y='3' width='1' height='1' fill='%23ffffff'/><rect x='4' y='3' width='1' height='1' fill='%23ffffff'/><rect x='3' y='4' width='2' height='1' fill='%23806040'/><rect x='2' y='5' width='4' height='2' fill='%230099cc'/><rect x='1' y='7' width='3' height='1' fill='%23554030'/><rect x='4' y='7' width='3' height='1' fill='%23554030'/></svg>"),
+    /* ── Creeper(右下角)— 经典绿色苦力怕脸 ── */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 8 8' shape-rendering='crispEdges'><rect x='1' y='1' width='6' height='6' fill='%235db340'/><rect x='2' y='1' width='1' height='1' fill='%23408020'/><rect x='5' y='1' width='1' height='1' fill='%23408020'/><rect x='1' y='2' width='1' height='1' fill='%236ec350'/><rect x='6' y='2' width='1' height='1' fill='%236ec350'/><rect x='2' y='2' width='1' height='1' fill='%233d2818'/><rect x='5' y='2' width='1' height='1' fill='%233d2818'/><rect x='3' y='3' width='2' height='1' fill='%233d2818'/><rect x='3' y='4' width='2' height='3' fill='%233d2818'/><rect x='2' y='5' width='1' height='2' fill='%233d2818'/><rect x='5' y='5' width='1' height='2' fill='%233d2818'/></svg>"),
+    /* ── 猪(右上角)— 粉色像素猪脸 ── */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 8 8' shape-rendering='crispEdges'><rect x='2' y='2' width='4' height='4' fill='%23e8a0a8'/><rect x='2' y='2' width='1' height='1' fill='%23d09098'/><rect x='5' y='2' width='1' height='1' fill='%23d09098'/><rect x='3' y='3' width='1' height='1' fill='%233d2818'/><rect x='4' y='3' width='1' height='1' fill='%233d2818'/><rect x='3' y='5' width='2' height='1' fill='%23d08080'/><rect x='3' y='6' width='1' height='1' fill='%23d08080'/><rect x='4' y='6' width='1' height='1' fill='%23d08080'/></svg>"),
+    /* ── 末影人(左上角)— 黑色高瘦身影视剪影 + 紫色眼睛 ── */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 8 8' shape-rendering='crispEdges'><rect x='3' y='0' width='2' height='8' fill='%23151515'/><rect x='2' y='2' width='1' height='4' fill='%23151515'/><rect x='5' y='2' width='1' height='4' fill='%23151515'/><rect x='3' y='3' width='1' height='1' fill='%23cc44ff'/><rect x='4' y='3' width='1' height='1' fill='%23cc44ff'/></svg>");
+  background-position:
+    48% 92%,    /* Steve 左下 */
+    88% 88%,    /* Creeper 右下 */
+    92% 12%,    /* 猪 右上 */
+    8% 10%;     /* 末影人 左上 */
+  background-size: 48px 48px;  /* 放大 3x(8px×3=24,余量) */
+  background-repeat: no-repeat;
+  opacity: 0.12;
+}
+/* Craft: ::after 散落的小方块粒子 — 漂浮的灰尘/光点,营造活气 */
+[data-theme="craft"] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px),
+    radial-gradient(circle, rgba(93,179,64,0.03) 1px, transparent 1px);
+  background-size: 40px 40px, 60px 60px;
+  background-position: 10% 20%, 70% 60%;
+  background-repeat: repeat;
+  animation: craft-drift 30s linear infinite;
+}
+@keyframes craft-drift {
+  0%   { background-position: 10% 20%, 70% 60%; }
+  50%  { background-position: 15% 25%, 65% 55%; }
+  100% { background-position: 10% 20%, 70% 60%; }
+}
+/* Craft: 确保内容在装饰层之上 */
+[data-theme="craft"] #app,
+[data-theme="craft"] #root > * {
+  position: relative;
+  z-index: 1;
+}
 [data-theme="craft"] #sidebar {
   background: var(--bg-side);
   border-right: 3px solid #1a1a1a;
