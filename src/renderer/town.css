@@ -484,8 +484,8 @@
   --town-hover: rgba(183,110,121,0.04);
 }
 [data-theme="tahoe"] {
-  --town-sky-top: #04101c;
-  --town-sky-bottom: #06121f;
+  --town-sky-top: #d6e4f5;
+  --town-sky-bottom: #c8d8ee;
   --town-hover: rgba(10,132,255,0.06);
 }
 

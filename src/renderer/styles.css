@@ -351,66 +351,68 @@
    对标 macOS Tahoe 26: 纯黑底 + 系统蓝 + 透明层级 + 精致材质
    ═══════════════════════════════════════════════════════════════════════ */
 [data-theme="tahoe"] {
-  /* ── Tahoe Liquid Glass: 深蓝黑底 + 多层渐变 ──
-     不是纯黑!底色带极深蓝调,配合 body 上的多层彩色渐变,
-     毛玻璃组件能透出底层色彩,才是真正的"液态玻璃"效果。 */
-  --bg:          #06121f;              /* 深海蓝黑(不是纯黑),给毛玻璃提供色彩基底 */
-  --bg-side:     #04101c;              /* 侧栏:更深一档,沉浸感 */
-  --bg-elev:     #0c1d2e;              /* 卡片层:蓝灰,透出底色渐变 */
-  --bg-elev-2:   #112538;             /* hover 层 */
-  --bg-input:    #0a1a2a;             /* 输入框底色 */
-  --border:      #1d3a52;             /* 蓝调边框,不是灰调 */
-  --border-soft: #142a3e;             /* 柔和内边框 */
-  --text:        #eaf2fb;             /* 带蓝调的纯白(Apple labelColor dark) */
-  --text-dim:    #92acca;            /* 蓝灰二级文字 */
-  --text-faint:  #506e8a;            /* 蓝灰三级文字 */
-  --accent:      #0a84ff;            /* systemBlue dark(Apple 精确值) */
-  --accent-dim:  #0a84ff66;         /* 系统蓝 40% 透明 */
-  --accent-glow: rgba(10,132,255,0.20);
+  /* ── Tahoe Liquid Glass: 亮色半透明磨砂玻璃 ──
+     macOS Tahoe 的 Liquid Glass 是亮色的:白色雾面玻璃透出底层壁纸色彩。
+     body 上铺大面积彩色渐变(模拟动态壁纸),
+     玻璃组件用半透明白底 + 强 blur,透出底色。 */
+  --bg:          #d6e4f5;              /* 亮蓝白底色(模拟 Tahoe 浅色桌面) */
+  --bg-side:     #c8d8ee;              /* 侧栏:稍深一档 */
+  --bg-elev:     #e8f0fa;             /* 卡片层:近白带蓝调 */
+  --bg-elev-2:   #dceaf6;             /* hover 层 */
+  --bg-input:    #e8f0fa;             /* 输入框底色 */
+  --border:      #b0c8e0;             /* 蓝调边框 */
+  --border-soft: #c0d4e8;             /* 柔和内边框 */
+  --text:        #0a1628;             /* 深蓝黑文字(高对比度) */
+  --text-dim:    #4a6280;            /* 蓝灰二级文字 */
+  --text-faint:  #8090a8;            /* 蓝灰三级文字 */
+  --accent:      #0a84ff;            /* systemBlue(Apple 精确值) */
+  --accent-dim:  #0a84ff33;         /* 系统蓝 20% 透明 */
+  --accent-glow: rgba(10,132,255,0.18);
   --accent-fg:   #ffffff;
-  --ok:          #30d158;            /* systemGreen dark */
-  --err:         #ff453a;            /* systemRed dark */
+  --ok:          #28cd41;            /* systemGreen light */
+  --err:         #ff3b30;            /* systemRed light */
   --run:         #0a84ff;
-  --code-bg:     #04101c;           /* 代码块底色 */
+  --code-bg:     #e0eaf4;           /* 代码块底色(亮色) */
   --bg-2:        var(--bg-elev);
   --danger:      var(--err);
-  --warn:        #ffd60a;
+  --warn:        #ff9f0a;            /* systemYellow light */
 
   /* ── Tahoe 专属:液态玻璃参数 ── */
-  --glass-bg:       rgba(12,29,46,0.55);     /* 半透明蓝灰(低不透明度,才能透出底色) */
-  --glass-bg-hover: rgba(17,37,56,0.60);     /* hover 半透明 */
-  --glass-blur:     24px;                    /* 强模糊(对标 Apple .regularMaterial) */
-  --glass-blur-lg:  40px;                    /* 超强模糊 */
+  --glass-bg:       rgba(255,255,255,0.55);   /* 半透明白雾(核心!) */
+  --glass-bg-hover: rgba(255,255,255,0.65);   /* hover 半透明 */
+  --glass-blur:     28px;                    /* 强模糊(对标 Apple .regularMaterial) */
+  --glass-blur-lg:  44px;
 
-  /* ── 投影:深蓝调(Apple Materials 深色投影) ── */
-  --shadow-xs: 0 1px 2px rgba(0,8,20,0.60);
-  --shadow-sm: 0 2px 8px rgba(0,8,20,0.50), 0 1px 2px rgba(0,8,20,0.40);
-  --shadow-md: 0 4px 16px rgba(0,8,20,0.55), 0 2px 4px rgba(0,8,20,0.40);
-  --shadow-lg: 0 8px 32px rgba(0,8,20,0.60), 0 4px 12px rgba(0,8,20,0.42);
-  --shadow-xl: 0 24px 64px rgba(0,8,20,0.70), 0 8px 24px rgba(0,8,20,0.48);
-  --shadow-accent: 0 4px 20px rgba(10,132,255,0.35);
-  --shadow-focus: 0 0 0 4px rgba(10,132,255,0.25);
+  /* ── 投影:柔和彩色阴影(Apple Materials 浅色投影) ── */
+  --shadow-xs: 0 1px 2px rgba(10,40,80,0.06);
+  --shadow-sm: 0 2px 8px rgba(10,40,80,0.08), 0 1px 2px rgba(10,40,80,0.05);
+  --shadow-md: 0 4px 16px rgba(10,40,80,0.10), 0 2px 4px rgba(10,40,80,0.06);
+  --shadow-lg: 0 8px 32px rgba(10,40,80,0.12), 0 4px 12px rgba(10,40,80,0.08);
+  --shadow-xl: 0 24px 64px rgba(10,40,80,0.16), 0 8px 24px rgba(10,40,80,0.10);
+  --shadow-accent: 0 4px 20px rgba(10,132,255,0.25);
+  --shadow-focus: 0 0 0 4px rgba(10,132,255,0.20);
 
   --radius-sm: 8px;
   --radius-md: 10px;
   --radius-lg: 14px;
 }
-/* Tahoe: 多层彩色渐变背景 — 模拟 macOS Tahoe 动态壁纸的色光氛围
-   毛玻璃组件(backdrop-filter)透出这些色彩,才是"液态玻璃"的视觉关键。
-   底色深蓝黑 + 系统蓝/青/紫 大面积光晕,缓慢飘移(20s 无限循环)。 */
+/* Tahoe: 亮色渐变背景 — 模拟 macOS Tahoe 浅色动态壁纸
+   大面积柔和色块(蓝/粉/青/紫),玻璃组件透出这些色彩。
+   这是 Liquid Glass 视觉的核心:没有丰富的底层色彩就没有"玻璃感"。 */
 [data-theme="tahoe"] body {
   background:
-    radial-gradient(ellipse 60% 50% at 15% 20%, rgba(10,132,255,0.12), transparent 55%),
-    radial-gradient(ellipse 50% 40% at 85% 15%, rgba(94,92,230,0.10), transparent 50%),
-    radial-gradient(ellipse 55% 45% at 75% 80%, rgba(0,199,190,0.08), transparent 55%),
-    radial-gradient(ellipse 45% 50% at 20% 75%, rgba(191,90,242,0.07), transparent 50%),
+    radial-gradient(ellipse 55% 45% at 12% 18%, rgba(10,132,255,0.18), transparent 55%),
+    radial-gradient(ellipse 45% 40% at 88% 12%, rgba(255,105,180,0.12), transparent 50%),
+    radial-gradient(ellipse 50% 45% at 78% 82%, rgba(0,199,190,0.12), transparent 55%),
+    radial-gradient(ellipse 40% 50% at 15% 78%, rgba(175,82,222,0.10), transparent 50%),
     var(--bg);
 }
-/* Tahoe: 侧边栏 — 深色半透明,透出底色渐变,顶部系统蓝光带 */
+/* Tahoe: 侧边栏 — 半透明白雾玻璃,透出底色渐变 */
 [data-theme="tahoe"] #sidebar {
-  background: rgba(4,16,28,0.80);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  background: rgba(255,255,255,0.45);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border-right-color: rgba(176,200,224,0.60);
   position: relative;
 }
 [data-theme="tahoe"] #sidebar::before {
@@ -468,26 +470,26 @@
 [data-theme="tahoe"] select:hover {
   border-color: var(--text-faint);
 }
-/* Tahoe: 用户气泡 — 系统蓝渐变(Apple iMessage dark 风格) */
+/* Tahoe: 用户气泡 — 系统蓝(Apple iMessage light 风格) */
 [data-theme="tahoe"] .msg.user .bubble {
   background: linear-gradient(135deg, var(--accent), #409cff);
   color: #fff;
   border: none;
   box-shadow: 0 2px 12px rgba(10,132,255,.20);
 }
-/* Tahoe: AI 气泡 — 更透明的毛玻璃,让底色渐变透出来 */
+/* Tahoe: AI 气泡 — 半透明白雾玻璃,透出底色渐变 */
 [data-theme="tahoe"] .msg .bubble {
-  background: rgba(12,29,46,0.50);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  border-color: rgba(29,58,82,0.60);
+  background: rgba(255,255,255,0.50);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+  border-color: rgba(176,200,224,0.50);
 }
-/* Tahoe: 滚动条 — 细、暗、hover 变系统蓝 */
+/* Tahoe: 滚动条 — 浅色底配蓝灰滚动条 */
 [data-theme="tahoe"] ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.15);
+  background: rgba(10,40,80,0.18);
 }
 [data-theme="tahoe"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(10,132,255,0.5);
+  background: rgba(10,132,255,0.40);
 }
 /* Tahoe: 状态点用系统色 */
 [data-theme="tahoe"] .dot.ready { background: var(--ok); box-shadow: 0 0 8px rgba(48,209,88,.3); }
@@ -515,14 +517,14 @@
 [data-theme="tahoe"] a {
   color: var(--accent);
 }
-/* Tahoe: chip/tag 更圆润 */
+/* Tahoe: chip/tag 亮色微蓝底 */
 [data-theme="tahoe"] .chip {
   border-color: var(--border-soft);
-  background: rgba(255,255,255,0.04);
+  background: rgba(10,132,255,0.06);
 }
-/* Tahoe: conv-list active hover 微蓝 */
+/* Tahoe: conv-list hover/active */
 [data-theme="tahoe"] #conv-list > li:hover {
-  background: rgba(255,255,255,0.04);
+  background: rgba(10,40,80,0.05);
 }
 [data-theme="tahoe"] #conv-list > li.active {
   background: rgba(10,132,255,0.12);
@@ -1650,23 +1652,23 @@ button.sm { padding: 3px 8px; font-size: 11px; }
 [data-theme="serene"] .tok-key       { color: #0451a5; }
 [data-theme="serene"] .tok-link      { color: #0000ee; }
 
-/* Tahoe 代码高亮 — Apple Xcode dark 配色 */
-[data-theme="tahoe"] .tok-keyword   { color: #ff7ab2; }
-[data-theme="tahoe"] .tok-string    { color: #ff8170; }
+/* Tahoe 代码高亮 — Apple Xcode Light 配色 */
+[data-theme="tahoe"] .tok-keyword   { color: #ad3da4; }
+[data-theme="tahoe"] .tok-string    { color: #d12f1b; }
 [data-theme="tahoe"] .tok-comment   { color: var(--text-faint); }
-[data-theme="tahoe"] .tok-number    { color: #d0bf69; }
-[data-theme="tahoe"] .tok-function  { color: #76d9b7; }
-[data-theme="tahoe"] .tok-class     { color: #5ac8fa; }
-[data-theme="tahoe"] .tok-tag       { color: #ff7ab2; }
-[data-theme="tahoe"] .tok-attr      { color: #76d9b7; }
+[data-theme="tahoe"] .tok-number    { color: #272ad8; }
+[data-theme="tahoe"] .tok-function  { color: #3900a0; }
+[data-theme="tahoe"] .tok-class     { color: #703daa; }
+[data-theme="tahoe"] .tok-tag       { color: #ad3da4; }
+[data-theme="tahoe"] .tok-attr      { color: #3900a0; }
 [data-theme="tahoe"] .tok-variable  { color: var(--text); }
-[data-theme="tahoe"] .tok-property  { color: #76d9b7; }
-[data-theme="tahoe"] .tok-selector  { color: #76d9b7; }
-[data-theme="tahoe"] .tok-atrule    { color: #ff7ab2; }
-[data-theme="tahoe"] .tok-header    { color: #5ac8fa; }
+[data-theme="tahoe"] .tok-property  { color: #3900a0; }
+[data-theme="tahoe"] .tok-selector  { color: #3900a0; }
+[data-theme="tahoe"] .tok-atrule    { color: #ad3da4; }
+[data-theme="tahoe"] .tok-header    { color: #703daa; }
 [data-theme="tahoe"] .tok-codeblock { color: var(--text); }
 [data-theme="tahoe"] .tok-inlinecode{ color: var(--accent); }
-[data-theme="tahoe"] .tok-key       { color: #ff7ab2; }
+[data-theme="tahoe"] .tok-key       { color: #ad3da4; }
 [data-theme="tahoe"] .tok-link      { color: var(--accent); }
 
 /* ═══════════════════════════════════════════════════════════════════════
