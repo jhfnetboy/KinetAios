@@ -499,6 +499,85 @@
   --town-hover: rgba(93,179,64,0.10);
 }
 
+/* ── 小镇风格:我的世界 / Town style: Minecraft ──
+   当 #town-canvas 有 data-town-style="minecraft" 时:
+   零圆角 + 硬偏移阴影 + 像素纹理背景 + 草地地面。 */
+#town-canvas[data-town-style="minecraft"] .town-sky {
+  background: linear-gradient(to bottom,
+    #78a7ff 0%,
+    #9ec5f0 40%,
+    #c0d8f0 70%,
+    #7ab84a 70%,
+    #5db340 100%);
+}
+/* MC 天空:蓝天 → 草地分界线(70% 处硬切,像素感) */
+
+#town-canvas[data-town-style="minecraft"] .town-body {
+  background-image:
+    /* 石砖纹理叠加 / stone brick texture overlay */
+    repeating-linear-gradient(0deg,
+      transparent 0px,
+      transparent 31px,
+      rgba(0,0,0,0.04) 31px,
+      rgba(0,0,0,0.04) 32px),
+    repeating-linear-gradient(90deg,
+      transparent 0px,
+      transparent 31px,
+      rgba(0,0,0,0.04) 31px,
+      rgba(0,0,0,0.04) 32px);
+}
+
+/* MC 风格的房子卡片:零圆角 + 硬偏移阴影 + bevel 边框 */
+#town-canvas[data-town-style="minecraft"] .town-house {
+  border-radius: 0;
+  border: 2px solid rgba(0,0,0,0.3);
+  border-top-color: rgba(255,255,255,0.12);
+  border-left-color: rgba(255,255,255,0.08);
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
+}
+#town-canvas[data-town-style="minecraft"] .town-house:hover {
+  background: rgba(93,179,64,0.08);
+  box-shadow: 6px 6px 0 rgba(0,0,0,0.25);
+}
+#town-canvas[data-town-style="minecraft"] .town-house:active {
+  transform: translateY(2px);
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+}
+
+/* MC 风格的房子 SVG:硬偏移阴影(不用 filter blur) */
+#town-canvas[data-town-style="minecraft"] .house-svg {
+  filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.15));
+}
+
+/* MC 风格的房子标题:像素硬阴影描边 */
+#town-canvas[data-town-style="minecraft"] .house-roof-label {
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+}
+
+/* MC 风格的村民:hover 不用圆角缩放,用硬偏移 */
+#town-canvas[data-town-style="minecraft"] .villager-wrap:hover {
+  transform: translateY(-2px);
+}
+
+/* MC 风格的按钮:零圆角 + bevel */
+#town-canvas[data-town-style="minecraft"] .house-actions button {
+  border-radius: 0;
+  border: 2px solid rgba(0,0,0,0.3);
+  border-top-color: rgba(255,255,255,0.15);
+  border-left-color: rgba(255,255,255,0.1);
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+}
+#town-canvas[data-town-style="minecraft"] .house-actions button:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 transparent;
+}
+
+/* MC 风格的空状态文字 */
+#town-canvas[data-town-style="minecraft"] .town-empty {
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+  font-weight: 700;
+}
+
 /* ── 响应式 / Responsive ── */
 @media (max-width: 700px) {
   .town-grid {

@@ -10,9 +10,11 @@ import type { Lang } from '../shared/i18n';
 // ── 外部传入的依赖(由 app.ts 设置) / External deps (set by app.ts) ──
 let lang: Lang = 'zh-CN';
 let homeDir = '';
+let townStyle: 'classic' | 'minecraft' = 'classic';
 
 export function setTownLang(l: Lang): void { lang = l; }
 export function setTownHomeDir(d: string): void { homeDir = d; }
+export function setTownStyle(s: 'classic' | 'minecraft'): void { townStyle = s; }
 
 // 远程节点信息 / Remote node info (passed from app.ts)
 export type RemoteNodeInfo = {
@@ -251,6 +253,237 @@ export function villagerSVG(engine: EngineKind, state: VillagerState): string {
   </svg>`;
 }
 
+// ═══════════════════════════════════════════════════
+// Minecraft 风格 SVG 生成器 / Minecraft-style SVG generators
+// 方块感建筑:零圆角、硬偏移阴影、像素纹理。
+// ═══════════════════════════════════════════════════
+
+/**
+ * MC 风格方块房子 SVG / Minecraft-style blocky house SVG
+ * 宽 130 高 125。石砖基座 + 木板墙 + 尖顶 + 方窗 + 烟囱。
+ * 配色按 hue 变化但保持低饱和度的"泥土/木头"质感。
+ */
+export function mcHouseSVG(cwd: string, agents: Conversation[], _hue?: number): string {
+  const hue = _hue ?? hashHue(cwd);
+  const hasRunning = agents.some((c) => c.status === 'running');
+  const hasError = agents.some((c) => villagerState(c) === 'error');
+
+  // 泥土/木头配色 / earthy/wooden palette (low-sat by hue)
+  const wallTop = `hsl(${hue}, 18%, 56%)`;
+  const wallFront = `hsl(${hue}, 18%, 44%)`;
+  const wallSide = `hsl(${hue}, 18%, 36%)`;
+  const roofColor = `hsl(${(hue + 20) % 360}, 25%, 32%)`;
+  const roofDark = `hsl(${(hue + 20) % 360}, 25%, 24%)`;
+  const stoneLight = '#8a8a8a';
+  const stoneDark = '#6a6a6a';
+  const stoneDarker = '#555555';
+  const woodTrim = `hsl(${(hue + 10) % 360}, 30%, 28%)`;
+
+  // 窗户:最多 4 个(2x2),超出用 +N / Windows: max 4 (2x2)
+  const maxWin = 4;
+  const shown = agents.slice(0, maxWin);
+  const overflow = agents.length - shown.length;
+
+  let windows = '';
+  shown.forEach((conv, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const wx = 52 + col * 30;
+    const wy = 48 + row * 22;
+    const vs = villagerState(conv);
+    const lit = vs === 'working' || vs === 'done';
+    const lightColor = vs === 'error' ? '#ef4444' : vs === 'done' ? '#5db340' : '#fbbf24';
+    const darkFill = vs === 'error' ? '#7f1d1d' : '#2a2a2a';
+    // 方窗(零圆角)+ 十字格 / square window (zero radius) + mullion
+    windows += `<rect x="${wx}" y="${wy}" width="22" height="16" fill="${lit ? lightColor : darkFill}" opacity="${lit ? 0.9 : 0.7}"/>`;
+    windows += `<rect x="${wx}" y="${wy}" width="22" height="16" fill="none" stroke="${woodTrim}" stroke-width="1.5"/>`;
+    windows += `<line x1="${wx + 11}" y1="${wy}" x2="${wx + 11}" y2="${wy + 16}" stroke="${woodTrim}" stroke-width="1"/>`;
+    windows += `<line x1="${wx}" y1="${wy + 8}" x2="${wx + 22}" y2="${wy + 8}" stroke="${woodTrim}" stroke-width="1"/>`;
+  });
+  if (overflow > 0) {
+    windows += `<text x="95" y="112" font-size="9" fill="rgba(140,140,150,0.55)" font-family="system-ui" font-weight="600">+${overflow}</text>`;
+  }
+
+  // 烟囱(冒烟) / chimney (smoke when running)
+  const chimney = hasRunning ? `
+    <rect x="90" y="14" width="10" height="18" fill="${stoneDark}" shape-rendering="crispEdges"/>
+    <rect x="88" y="12" width="14" height="4" fill="${stoneDarker}" shape-rendering="crispEdges"/>
+    <rect x="91" y="18" width="2" height="2" fill="${stoneDarker}" shape-rendering="crispEdges"/>
+    <rect x="94" y="22" width="2" height="2" fill="${stoneDarker}" shape-rendering="crispEdges"/>
+    <circle cx="95" cy="8" r="3" fill="rgba(200,200,210,0.2)">
+      <animate attributeName="cy" values="8;-4;8" dur="2.8s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.2;0;0.2" dur="2.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="97" cy="11" r="2" fill="rgba(200,200,210,0.14)">
+      <animate attributeName="cy" values="11;-1;11" dur="3.2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.14;0;0.14" dur="3.2s" repeatCount="indefinite"/>
+    </circle>` : '';
+
+  const errorFx = hasError ? `
+    <rect x="14" y="22" width="10" height="10" fill="#ef4444" opacity="0.8" shape-rendering="crispEdges">
+      <animate attributeName="opacity" values="0.4;0.8;0.4" dur="1.8s" repeatCount="indefinite"/>
+    </rect>` : '';
+
+  const initial = projName(cwd).charAt(0).toUpperCase();
+
+  return `<svg width="130" height="125" viewBox="0 0 130 125" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <!-- 地面阴影(硬偏移,无模糊) / ground shadow (hard offset, no blur) -->
+    <rect x="14" y="114" width="102" height="6" fill="rgba(0,0,0,0.15)"/>
+
+    <!-- 石砖基座(2 层) / stone brick base -->
+    <rect x="16" y="96" width="98" height="18" fill="${stoneDark}"/>
+    <rect x="16" y="96" width="98" height="2" fill="${stoneLight}"/>
+    <!-- 石砖纹理线 / brick texture lines -->
+    <line x1="16" y1="105" x2="114" y2="105" stroke="${stoneDarker}" stroke-width="0.8"/>
+    <line x1="40" y1="96" x2="40" y2="105" stroke="${stoneDarker}" stroke-width="0.8"/>
+    <line x1="65" y1="96" x2="65" y2="105" stroke="${stoneDarker}" stroke-width="0.8"/>
+    <line x1="90" y1="96" x2="90" y2="105" stroke="${stoneDarker}" stroke-width="0.8"/>
+    <line x1="28" y1="105" x2="28" y2="114" stroke="${stoneDarker}" stroke-width="0.8"/>
+    <line x1="52" y1="105" x2="52" y2="114" stroke="${stoneDarker}" stroke-width="0.8"/>
+    <line x1="78" y1="105" x2="78" y2="114" stroke="${stoneDarker}" stroke-width="0.8"/>
+    <line x1="102" y1="105" x2="102" y2="114" stroke="${stoneDarker}" stroke-width="0.8"/>
+
+    <!-- 墙体正面(木板纹理) / wall front (plank texture) -->
+    <rect x="20" y="42" width="90" height="56" fill="${wallFront}"/>
+    <!-- 木板横纹 / plank horizontal lines -->
+    <line x1="20" y1="56" x2="110" y2="56" stroke="${wallSide}" stroke-width="0.6" opacity="0.5"/>
+    <line x1="20" y1="70" x2="110" y2="70" stroke="${wallSide}" stroke-width="0.6" opacity="0.5"/>
+    <line x1="20" y1="84" x2="110" y2="84" stroke="${wallSide}" stroke-width="0.6" opacity="0.5"/>
+    <!-- 墙体顶部高光 / wall top highlight -->
+    <rect x="20" y="42" width="90" height="2" fill="${wallTop}"/>
+
+    <!-- 尖顶(三角,零圆角) / pitched roof (triangle, zero radius) -->
+    <polygon points="14,44 65,12 116,44" fill="${roofColor}"/>
+    <!-- 屋顶暗面 / roof dark side -->
+    <polygon points="14,44 65,12 65,44" fill="${roofDark}"/>
+    <!-- 屋顶边缘 / roof edge -->
+    <polygon points="14,44 65,12 116,44 116,47 65,15 14,47" fill="${roofDark}" opacity="0.6"/>
+
+    ${chimney}
+    ${errorFx}
+    ${windows}
+
+    <!-- 门(方块,零圆角) / door (square, zero radius) -->
+    <rect x="56" y="74" width="18" height="22" fill="${woodTrim}"/>
+    <rect x="56" y="74" width="18" height="2" fill="${wallSide}" opacity="0.5"/>
+    <!-- 门把手 / door knob -->
+    <rect x="69" y="85" width="2" height="2" fill="#d4af37"/>
+
+    <!-- 门牌 / door plate -->
+    <rect x="80" y="76" width="10" height="10" fill="${stoneDark}" opacity="0.8"/>
+    <text x="85" y="83.5" text-anchor="middle" font-size="6" fill="rgba(255,255,255,0.4)" font-family="system-ui" font-weight="700">${esc(initial)}</text>
+  </svg>`;
+}
+
+/**
+ * MC 风格村民(Steve/Creeper 般的方块小人) / Minecraft-style villager (blocky character)
+ * 宽 24 高 36。方块头 + 方块身体 + 像素眼睛。
+ */
+export function mcVillagerSVG(engine: EngineKind, state: VillagerState): string {
+  const headColor = ENGINE_COLORS[engine];
+  const idle = state === 'idle';
+  const working = state === 'working';
+  const isError = state === 'error';
+
+  // 方块头(零圆角)+ 像素眼 / square head (zero radius) + pixel eyes
+  // 眼睛是两个 2x1 像素方块 / eyes are two 2x1 pixel squares
+  const eyes = idle
+    ? '<rect x="8" y="7" width="2" height="1" fill="#1e1b1e"/><rect x="14" y="7" width="2" height="1" fill="#1e1b1e"/>'
+    : '<rect x="8" y="7" width="2" height="2" fill="#1e1b1e"/><rect x="14" y="7" width="2" height="2" fill="#1e1b1e"/>';
+
+  // 嘴 / mouth
+  const mouth = isError
+    ? '<rect x="10" y="10" width="4" height="2" fill="#1e1b1e"/>'
+    : '<rect x="11" y="10" width="2" height="1" fill="#1e1b1e"/>';
+
+  // 错误 ! / error indicator
+  const errFx = isError
+    ? `<rect x="8" y="-4" width="8" height="8" fill="#ef4444"/><text x="12" y="1" text-anchor="middle" font-size="6" fill="white" font-weight="bold">!</text>`
+    : '';
+
+  // 工作中 ... / working indicator
+  const workFx = working
+    ? `<rect x="4" y="-2" width="3" height="3" fill="rgba(120,120,130,0.6)"/><rect x="9" y="-2" width="3" height="3" fill="rgba(120,120,130,0.6)"/><rect x="14" y="-2" width="3" height="3" fill="rgba(120,120,130,0.6)"/>`
+    : '';
+
+  // done 星 / done star
+  const doneFx = state === 'done'
+    ? `<text x="12" y="-1" text-anchor="middle" font-size="8" fill="#5db340" opacity="0.9">✦</text>`
+    : '';
+
+  const bodyColor = `hsl(${hashHue(engine)}, 20%, 42%)`;
+  const bodyDark = `hsl(${hashHue(engine)}, 20%, 32%)`;
+
+  return `<svg width="24" height="36" viewBox="-2 -6 28 42" xmlns="http://www.w3.org/2000/svg" class="villager-svg state-${state}" shape-rendering="crispEdges">
+    ${doneFx}${errFx}${workFx}
+    <!-- 脚(方块) / feet (squares) -->
+    <rect x="7" y="30" width="4" height="3" fill="${bodyDark}"/>
+    <rect x="13" y="30" width="4" height="3" fill="${bodyDark}"/>
+    <!-- 身体(方块,零圆角) / body (square, zero radius) -->
+    <rect x="6" y="14" width="12" height="16" fill="${bodyColor}"/>
+    <rect x="6" y="26" width="12" height="4" fill="${bodyDark}"/>
+    <!-- 头(方块,零圆角) / head (square, zero radius) -->
+    <rect x="6" y="3" width="12" height="10" fill="${headColor}"/>
+    <!-- 头部暗边 / head dark edge -->
+    <rect x="6" y="11" width="12" height="2" fill="${bodyDark}" opacity="0.4"/>
+    ${eyes}
+    ${mouth}
+  </svg>`;
+}
+
+/**
+ * MC 风格云端房子(钻石方块+云) / Minecraft-style cloud house (diamond block + cloud)
+ * 用钻石/水晶方块代替等距房子。
+ */
+export function mcCloudHouseSVG(name: string, online: boolean, _toolCount: number): string {
+  const hue = hashHue(name);
+  const diaColor = online ? '#3ab5a0' : '#3a6a5a';
+  const diaLight = online ? '#60d0c0' : '#508075';
+  const diaDark = online ? '#208070' : '#205045';
+  const stoneDark = '#6a6a6a';
+
+  // 窗户 / windows (small)
+  const winColor = online ? '#7dd3fc' : '#2a2a2a';
+  const winLit = online ? 0.85 : 0.5;
+
+  return `<svg width="130" height="150" viewBox="0 0 130 150" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <!-- 云朵底座(方块化) / blocky cloud -->
+    <ellipse cx="65" cy="135" rx="52" ry="12" fill="rgba(180,190,200,0.15)"/>
+    <rect x="20" y="120" width="90" height="14" fill="rgba(200,210,220,0.08)"/>
+    <rect x="28" y="115" width="74" height="6" fill="rgba(200,210,220,0.06)"/>
+
+    <!-- 地面阴影 / ground shadow -->
+    <rect x="24" y="112" width="82" height="4" fill="rgba(0,0,0,0.1)"/>
+
+    <!-- 钻石方块建筑 / diamond block building -->
+    <rect x="28" y="60" width="74" height="52" fill="${diaColor}"/>
+    <!-- 高光(左上) / highlight (top-left) -->
+    <rect x="28" y="60" width="74" height="3" fill="${diaLight}"/>
+    <rect x="28" y="60" width="3" height="52" fill="${diaLight}" opacity="0.6"/>
+    <!-- 暗面(右下) / shadow (bottom-right) -->
+    <rect x="99" y="60" width="3" height="52" fill="${diaDark}"/>
+    <rect x="28" y="109" width="74" height="3" fill="${diaDark}"/>
+
+    <!-- 尖顶 / pitched roof -->
+    <polygon points="22,62 65,30 108,62" fill="${diaDark}"/>
+    <polygon points="22,62 65,30 65,62" fill="${diaColor}" opacity="0.7"/>
+
+    <!-- 方窗 / square windows -->
+    <rect x="38" y="72" width="14" height="12" fill="${winColor}" opacity="${winLit}"/>
+    <rect x="38" y="72" width="14" height="12" fill="none" stroke="${diaDark}" stroke-width="1.5"/>
+    <rect x="78" y="72" width="14" height="12" fill="${winColor}" opacity="${winLit}"/>
+    <rect x="78" y="72" width="14" height="12" fill="none" stroke="${diaDark}" stroke-width="1.5"/>
+
+    <!-- 门 / door -->
+    <rect x="56" y="86" width="18" height="26" fill="${stoneDark}"/>
+    <rect x="56" y="86" width="18" height="2" fill="${diaDark}" opacity="0.5"/>
+
+    <!-- 烟囱 / chimney -->
+    <rect x="84" y="38" width="8" height="16" fill="${stoneDark}"/>
+    <rect x="82" y="36" width="12" height="4" fill="#555"/>
+  </svg>`;
+}
+
 /**
  * 云端房子 SVG / Cloud house SVG (for remote MCP nodes)
  * 与本地房子视觉区分:房子坐在一朵云上,配色偏冷蓝/紫调。
@@ -416,7 +649,7 @@ export function renderTown(): void {
 
       houses += `<div class="town-house" data-cwd="${esc(cwd)}" data-idx="${idx}" style="--house-hue:${hue}">
         <div class="house-roof-label">${esc(proj)}</div>
-        <div class="house-svg">${houseSVG(cwd, agents, hue)}</div>
+        <div class="house-svg">${townStyle === 'minecraft' ? mcHouseSVG(cwd, agents, hue) : houseSVG(cwd, agents, hue)}</div>
         <div class="house-sign">
           <span class="house-stats">${esc(stats.join(' · '))}</span>
           <span class="house-last ${running ? 'running' : ''}">${esc(when)}</span>
@@ -426,7 +659,7 @@ export function renderTown(): void {
             const vs = villagerState(c);
             const label = c.customTitle || c.turns[0]?.prompt?.slice(0, 16) || '…';
             return `<div class="villager-wrap vs-${vs}" data-conv-id="${esc(c.id)}" data-engine="${c.engine}" title="${esc(label)}">
-              ${villagerSVG(c.engine, vs)}
+              ${townStyle === 'minecraft' ? mcVillagerSVG(c.engine, vs) : villagerSVG(c.engine, vs)}
               <span class="villager-name">${esc(label)}</span>
             </div>`;
           }).join('')}
@@ -452,7 +685,7 @@ export function renderTown(): void {
       const statusText = node.online ? tr('town.remoteOnline') : tr('town.remoteOffline');
       remoteHTML += `<div class="town-house town-remote ${statusCls}" data-remote-name="${esc(node.name)}">
         <div class="house-roof-label">${ICON_CLOUD_SMALL} ${esc(node.name)}</div>
-        <div class="house-svg">${cloudHouseSVG(node.name, node.online, node.toolCount)}</div>
+        <div class="house-svg">${townStyle === 'minecraft' ? mcCloudHouseSVG(node.name, node.online, node.toolCount) : cloudHouseSVG(node.name, node.online, node.toolCount)}</div>
         <div class="house-sign">
           <span class="house-stats ${statusCls}">${esc(statusText)}</span>
           <span class="house-last">${node.online ? esc(tr('town.remoteTools', { n: node.toolCount })) : esc(node.url || '')}</span>
@@ -465,6 +698,7 @@ export function renderTown(): void {
     remoteHTML += '</div>';
   }
 
+  root.dataset.townStyle = townStyle;
   root.innerHTML = `<div class="town-sky"></div>
     <div class="town-header">
       <div class="town-title">${ICON_TOWN} ${esc(tr('town.title'))}</div>
@@ -654,7 +888,7 @@ function refreshTownPanel(): void {
   const statusNote = conv.statusNote ? `<div class="tp-status-note">${esc(conv.statusNote)}</div>` : '';
 
   panel.innerHTML = `<div class="tp-head">
-    <span class="tp-villager">${villagerSVG(conv.engine, vs)}</span>
+    <span class="tp-villager">${townStyle === 'minecraft' ? mcVillagerSVG(conv.engine, vs) : villagerSVG(conv.engine, vs)}</span>
     <div class="tp-info">
       <div class="tp-name">${esc(conv.customTitle || projName(conv.cwd))}</div>
       <div class="tp-engine">${esc(conv.engine)} · <span class="tp-state vs-${vs}">${esc(stateLabel)}</span></div>
@@ -722,7 +956,7 @@ export function refreshTownVillager(conv: Conversation): void {
   wrap.querySelector('.villager-name')!.textContent = label;
   const svgContainer = wrap.querySelector('.villager-svg');
   if (svgContainer) {
-    svgContainer.outerHTML = villagerSVG(engine, vs);
+    svgContainer.outerHTML = townStyle === 'minecraft' ? mcVillagerSVG(engine, vs) : villagerSVG(engine, vs);
   }
   // 更新所属房子的窗户和统计 / Update house windows and stats
   const house = wrap.closest('.town-house') as HTMLElement | null;
@@ -732,7 +966,7 @@ export function refreshTownVillager(conv: Conversation): void {
       const ids = getOrder().filter((id) => getConvs!().get(id)?.cwd === cwd);
       const agents = ids.map((id) => getConvs!().get(id)!).filter(Boolean);
       const houseSvgEl = house.querySelector('.house-svg');
-      if (houseSvgEl) houseSvgEl.innerHTML = houseSVG(cwd, agents, hashHue(cwd));
+      if (houseSvgEl) houseSvgEl.innerHTML = townStyle === 'minecraft' ? mcHouseSVG(cwd, agents, hashHue(cwd)) : houseSVG(cwd, agents, hashHue(cwd));
       let totalTokens = 0, totalCost = 0, lastTs = 0, running = false;
       for (const c of agents) {
         totalTokens += c.tokens; totalCost += c.cost;

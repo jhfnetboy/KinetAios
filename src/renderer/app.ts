@@ -6,7 +6,7 @@ import type { AppSettings, ChatMsg, Conversation, EngineKind, GitSnapshot, Kinet
 import { renderMarkdown as md } from './markdown';
 import { mountFilesPane, type FilesPaneController } from './files-pane';
 import { CodeEditor } from './code-editor';
-import { setTownLang, setTownHomeDir, setTownCallbacks, renderTown, refreshTownVillager, townOnConversationChanged, type TownCallbacks } from './town';
+import { setTownLang, setTownHomeDir, setTownStyle, setTownCallbacks, renderTown, refreshTownVillager, townOnConversationChanged, type TownCallbacks } from './town';
 
 declare global {
   interface Window {
@@ -116,6 +116,7 @@ function applyI18nDOM(): void {
     // 初始化小镇视图的依赖 / Init town view deps
     setTownLang(lang);
     setTownHomeDir(HOME_DIR);
+    setTownStyle(settings.townStyle ?? 'classic');
     const townCallbacks: TownCallbacks = {
       send: (id, text) => { void api.send(id, text); },
       cancel: (id) => { api.cancel(id); },
@@ -1323,6 +1324,10 @@ async function showSettings() {
           <option value="sierra" ${s.theme === 'sierra' ? 'selected' : ''}>${tr('settings.theme.sierra')}</option>
           <option value="craft" ${s.theme === 'craft' ? 'selected' : ''}>${tr('settings.theme.craft')}</option>
         </select></div>
+        <div class="field"><label>${tr('settings.townStyle')}</label><select id="s-town-style">
+          <option value="classic" ${(s.townStyle ?? 'classic') === 'classic' ? 'selected' : ''}>${tr('settings.townStyle.classic')}</option>
+          <option value="minecraft" ${s.townStyle === 'minecraft' ? 'selected' : ''}>${tr('settings.townStyle.minecraft')}</option>
+        </select></div>
       </div>
       <div class="s-section">
         <h3>${tr('settings.sec.agent')}</h3>
@@ -1599,6 +1604,8 @@ async function showSettings() {
     profileCache = ns.modelProfiles || []; // 同步缓存
     lang = ns.lang; // 语言切了 → 刷静态文本 + 重渲(侧栏/主区/设置面板自身)
     setTownLang(lang); // 同步小镇视图语言 / sync town view lang
+    setTownStyle(ns.townStyle ?? 'classic'); // 同步小镇风格 / sync town style
+    renderTown(); // 重渲小镇(风格可能变了) / re-render town (style may have changed)
     applyTheme(ns.theme);
     applyI18nDOM();
     renderSidebar();
@@ -2061,6 +2068,7 @@ function readSettingsForm(): AppSettings {
     priceOutPerMTok: Number((document.getElementById('s-pout') as HTMLInputElement).value) || 0,
     lang: (document.getElementById('s-lang') as HTMLSelectElement).value as Lang,
     theme: (document.getElementById('s-theme') as HTMLSelectElement).value as 'dark' | 'light' | 'aurora' | 'serene' | 'tahoe' | 'sierra' | 'craft',
+    townStyle: ((document.getElementById('s-town-style') as HTMLSelectElement)?.value as 'classic' | 'minecraft') || 'classic',
     maxTurns: Number((document.getElementById('s-maxturns') as HTMLInputElement).value) || 0,
     closeBehavior: (document.getElementById('s-close-behavior') as HTMLSelectElement).value as AppSettings['closeBehavior'],
     embedBaseURL: (document.getElementById('s-embed-base') as HTMLInputElement).value.trim(),

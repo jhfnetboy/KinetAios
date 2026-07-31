@@ -20,6 +20,7 @@ const DEFAULTS: AppSettings = {
   presetId: 'glm',
   lang: 'zh-CN',
   theme: 'dark',
+  townStyle: 'classic', // 小镇视图风格:classic 经典等距小屋 / minecraft 我的世界方块风
   // 模型配置档:用户在设置页保存的多套完整 LLM 配置。空数组 = 只有全局默认。
   modelProfiles: [],
   activeProfileId: null,
