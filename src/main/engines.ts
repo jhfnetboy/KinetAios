@@ -352,9 +352,9 @@ class ClaudeCodeEngine implements Engine {
       '--add-dir', cwd,
     ];
     if (conv.engineSessionId) args.push('--resume', conv.engineSessionId);
-    // 会话目标 + KINET.md 规则 + KINET-CONTEXT.md 背景 + memory —— 同一个 flag 只能传一次,顺序拼接。
-    const goalBlock = conv.goal ? `\n\n# 🎯 会话目标\n你当前的核心目标是:\n${conv.goal}\n请在每一步操作中都朝这个目标推进。如果用户的新请求偏离目标,可以提醒并征求确认。` : '';
-    const append = goalBlock + (rulesBlock ?? '') + (contextBlock ?? '') + memoryBlock;
+    // KINET.md 规则 + KINET-CONTEXT.md 背景 + memory —— 同一个 flag 只能传一次,顺序拼接。
+    // goal 不注入 CLI 引擎:Claude Code / Codex 自带 CLAUDE.md / AGENTS.md 等机制管理目标。
+    const append = (rulesBlock ?? '') + (contextBlock ?? '') + memoryBlock;
     if (append.trim()) args.push('--append-system-prompt', append);
 
     let sawResult = false;
@@ -430,9 +430,9 @@ class CodexEngine implements Engine {
       onEvent({ type: 'error', message: t(s.lang, 'eng.codexNotFound') });
       return;
     }
-    // codex has no --append-system-prompt flag → goal + rules + context + memory 前置拼到 prompt。
-    const goalBlock = conv.goal ? `# 🎯 会话目标\n你当前的核心目标是:\n${conv.goal}\n请在每一步操作中都朝这个目标推进。如果用户的新请求偏离目标,可以提醒并征求确认。` : '';
-    const head = [goalBlock, (rulesBlock ?? '').trim(), (contextBlock ?? '').trim(), (memoryBlock ?? '').trim()].filter(Boolean).join('\n\n---\n\n');
+    // codex has no --append-system-prompt flag → rules + context + memory 前置拼到 prompt。
+    // goal 不注入 CLI 引擎:Claude Code / Codex 自带目标管理机制。
+    const head = [(rulesBlock ?? '').trim(), (contextBlock ?? '').trim(), (memoryBlock ?? '').trim()].filter(Boolean).join('\n\n---\n\n');
     const fullPrompt = head ? `${head}\n\n---\n\n${prompt}` : prompt;
     // exec-level flags (--json/-C/--add-dir/-s/--skip-git-repo-check) MUST precede the resume subcommand,
     // else clap parses them as resume args and exits status=2.
