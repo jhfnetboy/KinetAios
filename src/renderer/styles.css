@@ -996,7 +996,10 @@ a { color: var(--accent); }
 .s-tab:active { transform: scale(0.98); }
 .s-tab:hover { color: var(--text); }
 .s-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-.s-tab-panel { animation: fadeIn var(--dur-normal) var(--ease-out); }
+/* 设置页 tab 面板切换:统一用 opacity+微 translateY 进入,不用 scale 避免尺寸跳变。
+   animation 只在 display 从 none→block 时触发(display 切换会重置 animation)。 */
+.s-tab-panel { animation: panelIn var(--dur-normal) var(--ease-out); }
+@keyframes panelIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
