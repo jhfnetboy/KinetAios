@@ -1216,7 +1216,7 @@ function scrollDown() {
 
 // ---------- settings ----------
 // 主题切换:改 <html data-theme>,变量级切换,所有窗口共享(主/dashboard/files/quick 都用 styles.css)。
-function applyTheme(theme: 'dark' | 'light' | 'aurora' | 'serene' | 'tahoe' | 'sierra'): void {
+function applyTheme(theme: 'dark' | 'light' | 'aurora' | 'serene' | 'tahoe' | 'sierra' | 'craft'): void {
   document.documentElement.dataset.theme = theme;
 }
 
@@ -1321,6 +1321,7 @@ async function showSettings() {
           <option value="serene" ${s.theme === 'serene' ? 'selected' : ''}>${tr('settings.theme.serene')}</option>
           <option value="tahoe" ${s.theme === 'tahoe' ? 'selected' : ''}>${tr('settings.theme.tahoe')}</option>
           <option value="sierra" ${s.theme === 'sierra' ? 'selected' : ''}>${tr('settings.theme.sierra')}</option>
+          <option value="craft" ${s.theme === 'craft' ? 'selected' : ''}>${tr('settings.theme.craft')}</option>
         </select></div>
       </div>
       <div class="s-section">
@@ -2059,7 +2060,7 @@ function readSettingsForm(): AppSettings {
     priceInPerMTok: Number((document.getElementById('s-pin') as HTMLInputElement).value) || 0,
     priceOutPerMTok: Number((document.getElementById('s-pout') as HTMLInputElement).value) || 0,
     lang: (document.getElementById('s-lang') as HTMLSelectElement).value as Lang,
-    theme: (document.getElementById('s-theme') as HTMLSelectElement).value as 'dark' | 'light' | 'aurora' | 'serene' | 'tahoe' | 'sierra',
+    theme: (document.getElementById('s-theme') as HTMLSelectElement).value as 'dark' | 'light' | 'aurora' | 'serene' | 'tahoe' | 'sierra' | 'craft',
     maxTurns: Number((document.getElementById('s-maxturns') as HTMLInputElement).value) || 0,
     closeBehavior: (document.getElementById('s-close-behavior') as HTMLSelectElement).value as AppSettings['closeBehavior'],
     embedBaseURL: (document.getElementById('s-embed-base') as HTMLInputElement).value.trim(),

@@ -493,6 +493,11 @@
   --town-sky-bottom: #f4eadc;
   --town-hover: rgba(255,159,10,0.06);
 }
+[data-theme="craft"] {
+  --town-sky-top: #78a7ff;
+  --town-sky-bottom: #c0d8f0;
+  --town-hover: rgba(93,179,64,0.10);
+}
 
 /* ── 响应式 / Responsive ── */
 @media (max-width: 700px) {

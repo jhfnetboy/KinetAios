@@ -1927,6 +1927,320 @@ button.sm { padding: 3px 8px; font-size: 11px; }
 [data-theme="sierra"] .tok-link      { color: var(--accent); }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   Craft 主题 — Minecraft 方块世界像素风 / Block World Pixel Theme
+   灵感:Minecraft 经典石砖/泥土纹理 + 像素风 UI。
+   核心:0 圆角(方块!)、3D 凸起边框(bevel)、硬阴影(无模糊)、
+   石砖灰底色 + 草绿色 accent + 红石红 danger。
+   全部直角!全部硬阴影!这是方块的世界!
+   ═══════════════════════════════════════════════════════════════════════ */
+[data-theme="craft"] {
+  --bg:          #3a3a3a;              /* 石砖灰(Minecraft stone #737373 加深) */
+  --bg-side:     #2e2e2e;              /* 深掘块(比石砖更暗) */
+  --bg-elev:     #4a4a4a;             /* 石砖亮面 */
+  --bg-elev-2:   #555555;             /* 磨石砖 hover */
+  --bg-input:    #1e1e1e;             /* 煤炭块输入框(暗) */
+  --border:      #1a1a1a;             /* 深色边框(暗石/基岩) */
+  --border-soft: #2a2a2a;
+  --text:        #e8e8e8;             /* 白色文字(纯白偏灰) */
+  --text-dim:    #a0a0a0;            /* 浅灰 */
+  --text-faint:  #707070;            /* 中灰 */
+  --accent:      #5db340;            /* 草地绿/史莱姆绿(Minecraft grass #5DB340) */
+  --accent-dim:  #5db34033;
+  --accent-glow: rgba(93,179,64,0.20);
+  --accent-fg:   #ffffff;
+  --ok:          #5db340;            /* 同 accent,草绿 */
+  --err:         #d03b3b;            /* 红石红(Minecraft redstone) */
+  --run:         #d4af37;            /* 金苹果金 */
+  --code-bg:     #1e1e1e;           /* 煤炭块代码底色 */
+  --bg-2:        var(--bg-elev);
+  --danger:      var(--err);
+  --warn:        #d4af37;            /* 金锭黄 */
+
+  /* ── Craft 专属:方块质感 ── */
+  --glass-bg:       rgba(74,74,74,0.92);    /* 石砖不透明(方块世界不用毛玻璃!) */
+  --glass-bg-hover: rgba(85,85,85,0.95);
+  --glass-blur:     0px;                   /* 不模糊!方块世界是锐利的 */
+  --glass-blur-lg:  0px;
+
+  /* ── 投影:硬阴影(像素偏移,无模糊) ── */
+  --shadow-xs: 0 2px 0 #111;
+  --shadow-sm: 0 2px 0 #111, 0 0 0 1px #1a1a1a;
+  --shadow-md: 0 4px 0 #111, 0 0 0 1px #1a1a1a;
+  --shadow-lg: 0 6px 0 #111, 0 0 0 1px #1a1a1a;
+  --shadow-xl: 0 8px 0 #0e0e0e, 0 0 0 1px #1a1a1a;
+  --shadow-accent: 0 4px 0 #2d6020;
+  --shadow-focus: 0 0 0 3px rgba(93,179,64,0.40);
+
+  /* ── 圆角:全 0!这是方块世界! ── */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+}
+/* Craft: 石砖纹理背景 — 用 repeating-linear-gradient 模拟石砖砖缝
+   横线 = 水平砖缝,竖线交替偏移 = 错位砖缝(模拟石砖纹理) */
+[data-theme="craft"] body {
+  background-color: var(--bg);
+  background-image:
+    /* 砖缝网格线 */
+    repeating-linear-gradient(0deg,
+      transparent 0px,
+      transparent 31px,
+      rgba(0,0,0,0.25) 32px),
+    repeating-linear-gradient(90deg,
+      transparent 0px,
+      transparent 31px,
+      rgba(0,0,0,0.25) 32px),
+    /* 石砖微纹理(噪声感) */
+    radial-gradient(circle at 25% 25%, rgba(255,255,255,0.02) 1px, transparent 2px),
+    radial-gradient(circle at 75% 75%, rgba(0,0,0,0.05) 1px, transparent 2px);
+  background-size: 32px 32px, 32px 32px, 8px 8px, 6px 6px;
+}
+/* Craft: 侧边栏 — 深色石砖 + 右侧凸起边 */
+[data-theme="craft"] #sidebar {
+  background: var(--bg-side);
+  border-right: 3px solid #1a1a1a;
+  box-shadow: inset -3px 0 0 #555;
+  position: relative;
+}
+[data-theme="craft"] #sidebar::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: .6;
+}
+/* Craft: 全局方块面板 — 3D 凸起边框(bevel)+ 不透明底色
+   top/left 亮边模拟光源,bottom/right 暗边模拟凹陷 — 经典 Minecraft GUI */
+[data-theme="craft"] .msg .bubble,
+[data-theme="craft"] .modal-card,
+[data-theme="craft"] .ctx-insp-card,
+[data-theme="craft"] .modal-box,
+[data-theme="craft"] .inspect-modal,
+[data-theme="craft"] .cron-edit-card,
+[data-theme="craft"] #settings-view,
+[data-theme="craft"] .s-section,
+[data-theme="craft"] #wb .card,
+[data-theme="craft"] .cost-card,
+[data-theme="craft"] .tpl-card,
+[data-theme="craft"] .ctool-card {
+  background: var(--glass-bg);
+  border: 2px solid #1a1a1a;
+  border-top-color: #666;
+  border-left-color: #666;
+  border-right-color: #1a1a1a;
+  border-bottom-color: #1a1a1a;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: 0;
+  box-shadow: 0 4px 0 #0e0e0e;
+}
+/* Craft: 主按钮 — 石板按钮 + 3D 凸起 + 按下凹陷 */
+[data-theme="craft"] button.primary {
+  background: var(--accent);
+  color: #fff;
+  border: 2px solid #1a1a1a;
+  border-top-color: #6fd456;
+  border-left-color: #6fd456;
+  border-right-color: #2d6020;
+  border-bottom-color: #2d6020;
+  border-radius: 0;
+  box-shadow: 0 3px 0 #2d6020;
+  text-shadow: 1px 1px 0 #1a3a0a;
+}
+[data-theme="craft"] button.primary:hover {
+  filter: brightness(1.1);
+}
+[data-theme="craft"] button.primary:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 #2d6020;
+  border-top-color: #2d6020;
+  border-left-color: #2d6020;
+  border-right-color: #6fd456;
+  border-bottom-color: #6fd456;
+}
+/* Craft: 焦点态 — 草绿高亮边 */
+[data-theme="craft"] input:focus,
+[data-theme="craft"] textarea:focus,
+[data-theme="craft"] select:focus {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+/* Craft: 输入框 — 深陷凹槽(coal block)*/
+[data-theme="craft"] input,
+[data-theme="craft"] textarea,
+[data-theme="craft"] select {
+  background: var(--bg-input);
+  border: 2px solid #1a1a1a;
+  border-top-color: #1a1a1a;
+  border-left-color: #1a1a1a;
+  border-right-color: #555;
+  border-bottom-color: #555;
+  border-radius: 0;
+  color: var(--text);
+}
+/* Craft: 用户气泡 — 红石块(红色,和 AI 的石砖区分) */
+[data-theme="craft"] .msg.user .bubble {
+  background: #b83b3b;
+  color: #fff;
+  border: 2px solid #1a1a1a;
+  border-top-color: #d65656;
+  border-left-color: #d65656;
+  border-right-color: #7a1e1e;
+  border-bottom-color: #7a1e1e;
+  border-radius: 0;
+  box-shadow: 0 3px 0 #5a1010;
+  text-shadow: 1px 1px 0 #5a1010;
+}
+/* Craft: AI 气泡 — 石砖面板 */
+[data-theme="craft"] .msg .bubble {
+  background: #4a4a4a;
+  border: 2px solid #1a1a1a;
+  border-top-color: #666;
+  border-left-color: #666;
+  border-right-color: #2a2a2a;
+  border-bottom-color: #2a2a2a;
+  border-radius: 0;
+  box-shadow: 0 3px 0 #0e0e0e;
+}
+/* Craft: 滚动条 — 方块粗条 */
+[data-theme="craft"] ::-webkit-scrollbar {
+  width: 12px;
+}
+[data-theme="craft"] ::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+[data-theme="craft"] ::-webkit-scrollbar-thumb {
+  background: #555;
+  border: 2px solid #1a1a1a;
+  border-top-color: #666;
+  border-left-color: #666;
+  border-right-color: #2a2a2a;
+  border-bottom-color: #2a2a2a;
+}
+[data-theme="craft"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+/* Craft: 状态点 — 方块化(不圆!) */
+[data-theme="craft"] .dot.ready {
+  background: var(--ok);
+  box-shadow: 0 0 0 2px #1a1a1a, inset 1px 1px 0 #6fd456;
+}
+[data-theme="craft"] .dot.running {
+  background: var(--run);
+  box-shadow: 0 0 0 2px #1a1a1a, inset 1px 1px 0 #f0c850;
+  animation: craft-blink 1s steps(2) infinite;
+}
+@keyframes craft-blink {
+  50% { opacity: 0.4; }
+}
+/* Craft: active 会话 — 草绿高亮 */
+[data-theme="craft"] .cht.active,
+[data-theme="craft"] .conv-item.active {
+  color: var(--accent);
+  background: rgba(93,179,64,0.15);
+}
+[data-theme="craft"] .cht.active::after,
+[data-theme="craft"] .conv-item.active::after {
+  background: var(--accent);
+}
+/* Craft: conv-list hover */
+[data-theme="craft"] #conv-list > li:hover {
+  background: rgba(255,255,255,0.04);
+}
+[data-theme="craft"] #conv-list > li.active {
+  background: rgba(93,179,64,0.12);
+}
+/* Craft: brand/title */
+[data-theme="craft"] .brand {
+  color: var(--accent);
+  text-shadow: 2px 2px 0 #1a1a1a;
+}
+/* Craft: ghost 按钮 — 石板按钮风格 */
+[data-theme="craft"] button.ghost {
+  border: 2px solid #1a1a1a;
+  border-top-color: #555;
+  border-left-color: #555;
+  border-right-color: #2a2a2a;
+  border-bottom-color: #2a2a2a;
+  background: #3a3a3a;
+  border-radius: 0;
+  color: var(--text);
+}
+[data-theme="craft"] button.ghost:hover {
+  color: var(--accent);
+  background: #444;
+}
+[data-theme="craft"] button.ghost:active {
+  border-top-color: #2a2a2a;
+  border-left-color: #2a2a2a;
+  border-right-color: #555;
+  border-bottom-color: #555;
+}
+/* Craft: 链接 = 钻石蓝青(Minecraft diamond) */
+[data-theme="craft"] a {
+  color: #3ab5a0;
+}
+/* Craft: chip/tag — 石板标签 */
+[data-theme="craft"] .chip {
+  border: 1px solid #1a1a1a;
+  background: #3a3a3a;
+  border-top-color: #555;
+  border-left-color: #555;
+  border-radius: 0;
+}
+/* Craft: 分段按钮 active — 石砖按下 */
+[data-theme="craft"] .seg-btn.active {
+  background: #555;
+  border-top-color: #2a2a2a;
+  border-left-color: #2a2a2a;
+  border-right-color: #666;
+  border-bottom-color: #666;
+  box-shadow: none;
+}
+/* Craft: 内联代码 — 煤炭块 */
+[data-theme="craft"] .answer .ic {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 0;
+  color: var(--accent);
+}
+[data-theme="craft"] .answer .code {
+  background: var(--code-bg);
+  border: 2px solid #1a1a1a;
+  border-top-color: #1a1a1a;
+  border-left-color: #1a1a1a;
+  border-right-color: #444;
+  border-bottom-color: #444;
+  border-radius: 0;
+  box-shadow: inset 2px 2px 0 rgba(0,0,0,0.3);
+}
+/* Craft: pre/code 文字 — 像素感绿色(终端绿) */
+[data-theme="craft"] .answer pre {
+  font-family: 'Courier New', 'Consolas', monospace;
+}
+
+/* Craft 代码高亮 — Minecraft 命令块配色(深底+亮色字) */
+[data-theme="craft"] .tok-keyword   { color: #5db340; }    /* 草绿 */
+[data-theme="craft"] .tok-string    { color: #d4af37; }    /* 金锭黄 */
+[data-theme="craft"] .tok-comment   { color: #555; font-style: italic; }
+[data-theme="craft"] .tok-number    { color: #3ab5a0; }    /* 钻石青 */
+[data-theme="craft"] .tok-function  { color: #e0e0e0; }
+[data-theme="craft"] .tok-class     { color: #3ab5a0; }
+[data-theme="craft"] .tok-tag       { color: #b83b3b; }    /* 红石红 */
+[data-theme="craft"] .tok-attr      { color: #d4af37; }
+[data-theme="craft"] .tok-variable  { color: var(--text); }
+[data-theme="craft"] .tok-property  { color: #a0a0a0; }
+[data-theme="craft"] .tok-selector  { color: #b83b3b; }
+[data-theme="craft"] .tok-atrule    { color: #5db340; }
+[data-theme="craft"] .tok-header    { color: #d4af37; }
+[data-theme="craft"] .tok-codeblock { color: var(--text); }
+[data-theme="craft"] .tok-inlinecode{ color: var(--accent); }
+[data-theme="craft"] .tok-key       { color: #3ab5a0; }
+[data-theme="craft"] .tok-link      { color: #3ab5a0; text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════════════════════════════
    Visual Inspector — 圈选标注模态框 / Inspect annotation modal
    ═══════════════════════════════════════════════════════════════════════ */
 
