@@ -5,9 +5,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-export type Brand = { productName: string; homeDir: string };
+export type Brand = { productName: string; homeDir: string; version: string };
 
-const DEFAULT: Brand = { productName: 'KinetAios', homeDir: os.homedir() };
+// 版本号从 package.json 读,不硬编码 / Version from package.json, never hardcode.
+import pkg from '../../package.json';
+const DEFAULT: Brand = { productName: 'KinetAios', homeDir: os.homedir(), version: pkg.version };
 let cache: Brand | null = null;
 
 export function getBrand(): Brand {

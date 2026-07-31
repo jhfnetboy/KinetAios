@@ -1464,10 +1464,13 @@ async function showSettings() {
         <button class="primary" id="s-save">${tr('settings.save')}</button>
         <button id="s-test">${tr('settings.test')}</button>
         <span class="test-msg" id="s-msg"></span>
+        <span id="s-version" style="margin-left:auto;color:var(--muted);font-size:11px;user-select:text;cursor:default"></span>
       </div>
     </div>`;
   // 主题切换实时预览(不必等保存):select 改了立即改 html data-theme,保存时再固化。
   document.getElementById('s-theme')!.onchange = () => applyTheme(readSettingsForm().theme);
+  // 版本号填充 / Fill version label.
+  api.getBrand().then((b) => { const el = document.getElementById('s-version'); if (el) el.textContent = `v${b.version}`; });
   const apply = () => {
     const preset = PRESETS.find((p) => p.id === (document.getElementById('s-preset') as HTMLSelectElement).value);
     if (preset && preset.id !== 'custom') {

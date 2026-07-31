@@ -358,7 +358,7 @@ export interface KinetAPI {
   readFile(rel: string, cwd: string): Promise<{ ok: boolean; name?: string; content?: string; error?: string }>;
   fileRead(abs: string): Promise<{ ok: boolean; content?: string; error?: string }>;
   fileWrite(abs: string, content: string): Promise<{ ok: boolean; error?: string }>;
-  getBrand(): Promise<{ productName: string; homeDir: string }>;
+  getBrand(): Promise<{ productName: string; homeDir: string; version: string }>;
   quickSubmit(text: string): Promise<string>;
   openDashboard(): Promise<void>;
   openFiles(cwd?: string): Promise<void>;
