@@ -2590,7 +2590,7 @@ button.sm { padding: 3px 8px; font-size: 11px; }
    HUD 网格 + 四角十字准星 + 装甲板气泡
    ═════════════════════════════════════════════════════════════ */
 
-/* SEED: 聊天消息区 — HUD 网格背景 / Chat turns area HUD grid background */
+/* SEED: 聊天消息区 — HUD 网格 + 机甲水印 / Chat turns HUD grid + mecha watermark */
 [data-theme="seed"] #turns {
   background-color: var(--bg);
   background-image:
@@ -2599,8 +2599,12 @@ button.sm { padding: 3px 8px; font-size: 11px; }
     linear-gradient(90deg, rgba(127,204,25,0.06) 1px, transparent 1px),
     /* 粗网格 / coarse grid */
     linear-gradient(rgba(127,204,25,0.12) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(127,204,25,0.12) 1px, transparent 1px);
-  background-size: 24px 24px, 24px 24px, 96px 96px, 96px 96px;
+    linear-gradient(90deg, rgba(127,204,25,0.12) 1px, transparent 1px),
+    /* 中央机甲水印 / center mecha watermark */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='700' viewBox='0 0 120 140'><g fill='none' stroke='%237fcc19' stroke-width='0.8' opacity='0.08'><path d='M60 8 L52 18 L52 28 L44 34 L44 52 L36 58 L36 78 L44 84 L44 100 L52 106 L52 116 L60 120 L68 116 L68 106 L76 100 L76 84 L84 78 L84 58 L76 52 L76 34 L68 28 L68 18 L60 8 Z'/><path d='M44 40 L36 44 L36 56 L44 52'/><path d='M76 40 L84 44 L84 56 L76 52'/><path d='M52 60 L68 60 L68 72 L52 72 Z'/><path d='M30 58 L22 64 L22 76 L30 72'/><path d='M90 58 L98 64 L98 76 L90 72'/><path d='M48 84 L48 96 L52 100'/><path d='M72 84 L72 96 L68 100'/></g></svg>");
+  background-size: 24px 24px, 24px 24px, 96px 96px, 96px 96px, 600px auto;
+  background-position: 0 0, 0 0, 0 0, 0 0, center;
+  background-repeat: repeat, repeat, repeat, repeat, no-repeat;
 }
 
 /* SEED: 聊天区四角十字准星 / Chat area corner reticles
