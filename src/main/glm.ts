@@ -328,42 +328,49 @@ async function ollamaStream(
   const decoder = new TextDecoder();
   let buf = '';
 
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    const lines = buf.split('\n');
-    buf = lines.pop() ?? '';
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      try {
-        const obj = JSON.parse(trimmed) as Record<string, any>;
-        if (obj.done && obj.total_duration !== undefined) {
-          // 最终统计行
-          tokensIn = intFrom(obj.prompt_eval_count) || tokensIn;
-          tokensOut = intFrom(obj.eval_count) || tokensOut;
-          break;
-        }
-        const msg = obj.message;
-        if (!msg) continue;
-        if (typeof msg.content === 'string' && msg.content) {
-          content += msg.content;
-          onToken(msg.content);
-        }
-        if (Array.isArray(msg.tool_calls)) {
-          for (let i = 0; i < msg.tool_calls.length; i++) {
-            const tc = msg.tool_calls[i];
-            const fn = tc.function ?? {};
-            calls.set(i, {
-              id: tc.id ?? '',
-              name: fn.name ?? '',
-              args: typeof fn.arguments === 'string' ? fn.arguments : JSON.stringify(fn.arguments ?? {}),
-            });
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() ?? '';
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const obj = JSON.parse(trimmed) as Record<string, any>;
+          if (obj.done && obj.total_duration !== undefined) {
+            // 最终统计行
+            tokensIn = intFrom(obj.prompt_eval_count) || tokensIn;
+            tokensOut = intFrom(obj.eval_count) || tokensOut;
+            break;
           }
-        }
-      } catch { /* skip malformed line */ }
+          const msg = obj.message;
+          if (!msg) continue;
+          if (typeof msg.content === 'string' && msg.content) {
+            content += msg.content;
+            onToken(msg.content);
+          }
+          if (Array.isArray(msg.tool_calls)) {
+            for (let i = 0; i < msg.tool_calls.length; i++) {
+              const tc = msg.tool_calls[i];
+              const fn = tc.function ?? {};
+              calls.set(i, {
+                id: tc.id ?? '',
+                name: fn.name ?? '',
+                args: typeof fn.arguments === 'string' ? fn.arguments : JSON.stringify(fn.arguments ?? {}),
+              });
+            }
+          }
+        } catch { /* skip malformed line */ }
+      }
     }
+  } finally {
+    // 必须释放 reader:否则底层 TCP 连接挂着,abort 后流不真正关闭。
+    // Must release+cancel reader — otherwise TCP connection leaks and abort doesn't close the stream.
+    try { reader.releaseLock(); } catch { /* already released */ }
+    await reader.cancel().catch(() => {});
   }
 
   const toolCalls = [...calls.entries()]

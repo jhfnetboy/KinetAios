@@ -71,13 +71,29 @@ let quitting = false;
 const pendingConfirms = new Map<string, (approved: boolean) => void>();
 let confirmSeq = 0;
 
+// confirm 超时(5 分钟):防止 dashboard 窗口关闭/刷新后 confirm Promise 永久挂起,
+// 导致 Direct 引擎的 AgentLoop 卡在 await ctx.confirm() 上 —— 既泄漏 Promise 又锁住会话。
+const CONFIRM_TIMEOUT_MS = 300_000;
+
 function confirm(cmd: string): Promise<boolean> {
   if (getSettings().approval === 'never') return Promise.resolve(true);
   const id = `c${process.pid}_${confirmSeq++}`;
   const win = dashboardWin;
   if (!win || win.isDestroyed()) return Promise.resolve(false);
   win.webContents.send('confirm-request', { id, cmd });
-  return new Promise((resolve) => pendingConfirms.set(id, resolve));
+  return new Promise((resolve) => {
+    // 超时自动 deny + 清理 / Auto-deny + cleanup on timeout
+    const timer = setTimeout(() => {
+      if (pendingConfirms.has(id)) {
+        pendingConfirms.delete(id);
+        resolve(false);
+      }
+    }, CONFIRM_TIMEOUT_MS);
+    pendingConfirms.set(id, (approved) => {
+      clearTimeout(timer);
+      resolve(approved);
+    });
+  });
 }
 
 // Resolve every pending confirm as denied — used on cancel/delete so a parked Direct tool call
@@ -151,6 +167,10 @@ function createDashboard(): BrowserWindow {
     }
     // mode === 'quit' → 不拦截,正常走 window-all-closed → app.quit()
   });
+
+  // 窗口刷新/导航前 drain:confirm modal 开着时用户按 F5,Promise 会永久挂起。
+  // Drain before navigation (F5 / URL change) — pending confirms would hang forever.
+  win.webContents.on('did-start-navigation', () => drainConfirms());
 
   return win;
 }
