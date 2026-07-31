@@ -2320,6 +2320,272 @@ button.sm { padding: 3px 8px; font-size: 11px; }
 [data-theme="craft"] .tok-link      { color: #3ab5a0; text-decoration: underline; }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   SEED 高达主题 — ZAFT 军事风:暗色金属底 + 强袭高达三色 + HUD 光辉
+   Gundam SEED military aesthetic: dark gunmetal + Strike Gundam tricolor
+   + ZAFT green glow + cockpit HUD scanlines.
+   配色核心:
+     底色: 钛灰 #1a1d24 / 面板 #242830 / 金属蓝灰 #2d3340
+     ZAFT 绿 accent #7fcc19 — 主强调(链接/按钮/状态)
+     联邦蓝 #2a6fc0 — 次要强调
+     强袭红 #d44040 — 用户气泡/错误
+     高达黄 #f5d020 — Run 状态/点缀
+   视觉特征:
+     · ZAFT 绿光辉 glow 边框 + box-shadow
+     · 微弱 HUD 扫描线(1px 横线) 覆盖全界面
+     · 军事标签风:全大写字母间距 + 数字用 monospace
+     · 边角小切角:clip-path 制造机甲装甲感
+   ═══════════════════════════════════════════════════════════════════════ */
+[data-theme="seed"] {
+  --bg: #14161b;
+  --bg-side: #0f1116;
+  --bg-elev: #1e222a;
+  --bg-elev-2: #252a34;
+  --bg-input: #1a1e26;
+  --border: #2d3340;
+  --border-soft: #252a32;
+  --text: #d8dee8;
+  --text-dim: #7a8090;
+  --text-faint: #4a5060;
+  --accent: #7fcc19;
+  --accent-dim: #3d6b0a;
+  --accent-glow: rgba(127,204,25,0.15);
+  --accent-fg: #0a0d10;
+  --ok: #4ec27a;
+  --err: #e2614c;
+  --run: #f5d020;
+  --code-bg: #0c0e12;
+  --bg-2: var(--bg-side);
+  --danger: var(--err);
+  --warn: #f5d020;
+
+  /* SEED 专属变量 / SEED-specific tokens */
+  --seed-blue: #2a6fc0;       /* 联邦蓝 / Earth Alliance blue */
+  --seed-red: #d4404a;        /* 强袭红 / Strike red */
+  --seed-yellow: #f5d020;     /* 高达黄 / Gundam yellow */
+  --seed-green: #7fcc19;      /* ZAFT 绿 / ZAFT green */
+  --seed-glow: rgba(127,204,25,0.18);  /* 绿光辉 / green glow */
+  --seed-panel: #1a1e26;      /* 面板底 / panel base */
+  --seed-metal: #2d3340;      /* 金属灰 / gunmetal */
+  --seed-scan: rgba(127,204,25,0.03);  /* 扫描线 / scanline color */
+
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.40);
+  --shadow-sm: 0 2px 6px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.30);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.50), 0 2px 4px rgba(0,0,0,0.35);
+  --shadow-lg: 0 8px 28px rgba(0,0,0,0.55), 0 4px 10px rgba(0,0,0,0.40);
+  --shadow-xl: 0 20px 56px rgba(0,0,0,0.65), 0 8px 20px rgba(0,0,0,0.45);
+  --shadow-accent: 0 0 16px rgba(127,204,25,0.25), 0 0 2px rgba(127,204,25,0.30);
+  --shadow-focus: 0 0 0 2px rgba(127,204,25,0.20), 0 0 12px rgba(127,204,25,0.10);
+}
+
+/* SEED: 全局 HUD 扫描线覆盖 / HUD scanline overlay */
+[data-theme="seed"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    var(--seed-scan) 3px,
+    var(--seed-scan) 4px);
+  opacity: 0.5;
+}
+
+/* SEED: 侧边栏 — 军事深色 + 右侧绿光辉线 / Military sidebar + green glow line */
+[data-theme="seed"] #sidebar {
+  background: var(--bg-side);
+  border-right: 1px solid var(--seed-metal);
+  position: relative;
+}
+[data-theme="seed"] #sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(127,204,25,0.3) 20%,
+    rgba(127,204,25,0.15) 50%,
+    rgba(127,204,25,0.3) 80%,
+    transparent 100%);
+}
+
+/* SEED: 全局面板 — 军事装甲风:金属底色 + 细发光边框
+   全用标准 border-radius(SEED 不做切角,保持克制) */
+[data-theme="seed"] .msg .bubble,
+[data-theme="seed"] .modal-card,
+[data-theme="seed"] .ctx-insp-card,
+[data-theme="seed"] .modal-box,
+[data-theme="seed"] .inspect-modal,
+[data-theme="seed"] .cron-edit-card,
+[data-theme="seed"] #settings-view,
+[data-theme="seed"] .s-section,
+[data-theme="seed"] #wb .card,
+[data-theme="seed"] .cost-card,
+[data-theme="seed"] .tpl-card,
+[data-theme="seed"] .ctool-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--seed-metal);
+  box-shadow:
+    0 0 0 1px rgba(127,204,25,0.04),
+    inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+/* SEED: 主按钮 — ZAFT 绿光辉 / ZAFT green glow button */
+[data-theme="seed"] button.primary {
+  background: linear-gradient(135deg, #7fcc19 0%, #6bb014 100%);
+  color: #0a0d10;
+  border: 1px solid rgba(127,204,25,0.5);
+  box-shadow:
+    0 0 12px rgba(127,204,25,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.20);
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+[data-theme="seed"] button.primary:hover {
+  background: linear-gradient(135deg, #8fdf2a 0%, #7cc218 100%);
+  box-shadow:
+    0 0 20px rgba(127,204,25,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.25);
+}
+[data-theme="seed"] button.primary:active {
+  box-shadow:
+    0 0 6px rgba(127,204,25,0.20),
+    inset 0 1px 3px rgba(0,0,0,0.20);
+}
+
+/* SEED: 输入框聚焦 — 绿光辉 / Input focus green glow */
+[data-theme="seed"] input:focus,
+[data-theme="seed"] textarea:focus,
+[data-theme="seed"] select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(127,204,25,0.25), 0 0 10px rgba(127,204,25,0.08);
+}
+
+/* SEED: 链接 = 联邦蓝 / Links = Earth Alliance blue */
+[data-theme="seed"] a {
+  color: #4a9fea;
+  text-decoration: none;
+}
+[data-theme="seed"] a:hover {
+  color: #6ab5fa;
+  text-shadow: 0 0 8px rgba(74,159,234,0.3);
+}
+
+/* SEED: 用户气泡 — 强袭红 / User bubble = Strike red */
+[data-theme="seed"] .msg.user .bubble {
+  background: linear-gradient(135deg, rgba(212,64,74,0.15) 0%, rgba(180,40,50,0.12) 100%);
+  border: 1px solid rgba(212,64,74,0.25);
+  color: var(--text);
+}
+
+/* SEED: 滚动条 — ZAFT 绿暗色 / Scrollbar green-tinted */
+[data-theme="seed"] ::-webkit-scrollbar-thumb {
+  background: rgba(127,204,25,0.15);
+  border-color: transparent;
+}
+[data-theme="seed"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(127,204,25,0.30);
+}
+
+/* SEED: 状态点 — ZAFT 军事色 / Status dots military */
+[data-theme="seed"] .dot.ready {
+  background: var(--seed-green);
+  box-shadow: 0 0 8px rgba(127,204,25,0.35);
+}
+[data-theme="seed"] .dot.running {
+  background: var(--seed-yellow);
+  box-shadow: 0 0 8px rgba(245,208,32,0.40);
+}
+
+/* SEED: 会话列表 — 军事选中态 / Conversation list military active */
+[data-theme="seed"] .cht.active,
+[data-theme="seed"] .conv-item.active {
+  color: var(--accent);
+  background: rgba(127,204,25,0.08);
+  border-left: 2px solid var(--accent);
+}
+[data-theme="seed"] .cht.active::after,
+[data-theme="seed"] .conv-item.active::after {
+  background: var(--accent);
+}
+[data-theme="seed"] #conv-list > li:hover {
+  background: rgba(127,204,25,0.04);
+}
+[data-theme="seed"] #conv-list > li.active {
+  background: rgba(127,204,25,0.08);
+}
+
+/* SEED: 品牌 — ZAFT 绿光辉文字 / Brand ZAFT green glow */
+[data-theme="seed"] .brand {
+  color: var(--text);
+  text-shadow: 0 0 12px rgba(127,204,25,0.15);
+}
+
+/* SEED: ghost 按钮 hover / Ghost button hover */
+[data-theme="seed"] button.ghost:hover {
+  color: var(--accent);
+  background: rgba(127,204,25,0.06);
+  border-color: rgba(127,204,25,0.15);
+}
+
+/* SEED: chip/tag — 军事标签底色 / Chip military */
+[data-theme="seed"] .chip {
+  border-color: var(--seed-metal);
+  background: rgba(127,204,25,0.04);
+  color: var(--text-dim);
+}
+
+/* SEED: 分段按钮 active — 金属面板 / Segmented button */
+[data-theme="seed"] .seg-btn.active {
+  background: var(--bg-elev-2);
+  box-shadow: 0 0 0 1px rgba(127,204,25,0.15), inset 0 1px 0 rgba(255,255,255,0.03);
+  color: var(--accent);
+}
+
+/* SEED: 内联代码 — 绿底暗色 / Inline code */
+[data-theme="seed"] .answer .ic {
+  background: rgba(127,204,25,0.08);
+  border-color: rgba(127,204,25,0.15);
+  color: var(--accent);
+}
+[data-theme="seed"] .answer .code {
+  background: var(--code-bg);
+  border: 1px solid var(--seed-metal);
+}
+
+/* SEED: 代码语法高亮 — 高达三色配色 / Syntax highlight Gundam tricolor */
+[data-theme="seed"] .tok-keyword   { color: #4a9fea; }    /* 联邦蓝 / EA blue */
+[data-theme="seed"] .tok-string    { color: #f5d020; }    /* 高达黄 / Gundam yellow */
+[data-theme="seed"] .tok-comment   { color: #4a5060; font-style: italic; }
+[data-theme="seed"] .tok-number    { color: #d4404a; }    /* 强袭红 / Strike red */
+[data-theme="seed"] .tok-function  { color: #7fcc19; }    /* ZAFT 绿 / ZAFT green */
+[data-theme="seed"] .tok-class     { color: #f5d020; }
+[data-theme="seed"] .tok-tag       { color: #d4404a; }
+[data-theme="seed"] .tok-attr      { color: #f5d020; }
+[data-theme="seed"] .tok-variable  { color: var(--text); }
+[data-theme="seed"] .tok-property  { color: #8a90a0; }
+[data-theme="seed"] .tok-selector  { color: #d4404a; }
+[data-theme="seed"] .tok-atrule    { color: #4a9fea; }
+[data-theme="seed"] .tok-header    { color: #f5d020; }
+[data-theme="seed"] .tok-codeblock { color: var(--text); }
+[data-theme="seed"] .tok-inlinecode{ color: var(--accent); }
+[data-theme="seed"] .tok-key       { color: #7fcc19; }
+[data-theme="seed"] .tok-link      { color: #4a9fea; text-decoration: underline; }
+
+/* SEED: 发送按钮停止态 — 强袭红 / Send stop = Strike red */
+[data-theme="seed"] .send.stop {
+  background: linear-gradient(135deg, #d4404a 0%, #b03038 100%);
+  border-color: rgba(212,64,74,0.5);
+  box-shadow: 0 0 12px rgba(212,64,74,0.25);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
    Visual Inspector — 圈选标注模态框 / Inspect annotation modal
    ═══════════════════════════════════════════════════════════════════════ */
 

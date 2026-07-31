@@ -1217,7 +1217,7 @@ function scrollDown() {
 
 // ---------- settings ----------
 // 主题切换:改 <html data-theme>,变量级切换,所有窗口共享(主/dashboard/files/quick 都用 styles.css)。
-function applyTheme(theme: 'dark' | 'light' | 'aurora' | 'serene' | 'tahoe' | 'sierra' | 'craft'): void {
+function applyTheme(theme: 'dark' | 'light' | 'aurora' | 'serene' | 'tahoe' | 'sierra' | 'craft' | 'seed'): void {
   document.documentElement.dataset.theme = theme;
 }
 
@@ -1323,6 +1323,7 @@ async function showSettings() {
           <option value="tahoe" ${s.theme === 'tahoe' ? 'selected' : ''}>${tr('settings.theme.tahoe')}</option>
           <option value="sierra" ${s.theme === 'sierra' ? 'selected' : ''}>${tr('settings.theme.sierra')}</option>
           <option value="craft" ${s.theme === 'craft' ? 'selected' : ''}>${tr('settings.theme.craft')}</option>
+          <option value="seed" ${s.theme === 'seed' ? 'selected' : ''}>${tr('settings.theme.seed')}</option>
         </select></div>
         <div class="field"><label>${tr('settings.townStyle')}</label><select id="s-town-style">
           <option value="classic" ${(s.townStyle ?? 'classic') === 'classic' ? 'selected' : ''}>${tr('settings.townStyle.classic')}</option>
