@@ -1,6 +1,6 @@
 # KinetAios 项目运行说明
 
-**版本 1.5.0 · GPL v3 · Windows 11 / macOS**
+**版本 1.6.0 · GPL v3 · Windows 11 / macOS**
 
 ---
 
@@ -46,7 +46,7 @@
 
 ### Windows
 
-1. 前往 [GitHub Releases](https://github.com/phinn/KinetAios/releases/latest) 下载 `KinetAios-Setup-1.5.0.exe`
+1. 前往 [GitHub Releases](https://github.com/phinn/KinetAios/releases/latest) 下载 `KinetAios-Setup-1.6.0.exe`
 2. 双击运行安装程序
 3. 如果出现 SmartScreen 警告 → 点击「更多信息」→「仍要运行」（应用未签名，这是正常的）
 4. 安装完成后从开始菜单启动 KinetAios
@@ -111,7 +111,7 @@ npm run dev
 ```bash
 # Windows（必须在 Windows 机器上执行）
 npm run dist
-# → 产出 release/KinetAios Setup 1.5.0.exe
+# → 产出 release/KinetAios Setup 1.6.0.exe
 
 # 或只打包不制作安装程序
 npm run pack
