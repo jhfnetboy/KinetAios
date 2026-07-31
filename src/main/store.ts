@@ -72,9 +72,18 @@ export function initStore(): void {
     db.exec(`ALTER TABLE memories ADD COLUMN conversation_id TEXT;`);
 }
 
+// Prepared statement 缓存:热路径函数(appendMessage/saveTurn 等)每次调用都 prepare,
+// 产生大量临时 Statement JS 对象 + GC 压力。缓存复用,避免内存抖动。
+const stmtCache = new Map<string, Database.Statement>();
+function stmt(sql: string): Database.Statement {
+  let s = stmtCache.get(sql);
+  if (!s) { s = db.prepare(sql); stmtCache.set(sql, s); }
+  return s;
+}
+
 // MARK: message-level FTS (recall_memory searches this)
 export function appendMessage(role: string, content: string): void {
-  db.prepare('INSERT INTO history(role, content) VALUES (?, ?);').run(role, content);
+  stmt('INSERT INTO history(role, content) VALUES (?, ?);').run(role, content);
 }
 
 export function search(q: string, limit = 20): Array<{ role: string; content: string }> {
@@ -137,14 +146,14 @@ export function updateConversationSession(c: Conversation): void {
 }
 
 export function saveDirectHistory(c: Conversation): void {
-  db.prepare('UPDATE conversations SET direct_history=? WHERE id=?;').run(
+  stmt('UPDATE conversations SET direct_history=? WHERE id=?;').run(
     JSON.stringify(c.directHistory ?? []),
     c.id,
   );
 }
 
 export function saveTurn(convId: string, t: Turn): void {
-  db.prepare(
+  stmt(
     `INSERT INTO turns(id, conv_id, data, created_at) VALUES(?,?,?,?)
      ON CONFLICT(id) DO UPDATE SET data=excluded.data;`,
   ).run(t.id, convId, JSON.stringify(t), t.ts);
@@ -153,19 +162,19 @@ export function saveTurn(convId: string, t: Turn): void {
 export function deleteConversation(id: string): void {
   // 事务保证原子性 —— 崩溃不会留孤儿 turns
   db.transaction(() => {
-    db.prepare('DELETE FROM turns WHERE conv_id=?;').run(id);
-    db.prepare('DELETE FROM cost_log WHERE conv_id=?;').run(id);
-    db.prepare('DELETE FROM memory_triples WHERE conversation_id=?;').run(id);
-    db.prepare('DELETE FROM conversations WHERE id=?;').run(id);
+    stmt('DELETE FROM turns WHERE conv_id=?;').run(id);
+    stmt('DELETE FROM cost_log WHERE conv_id=?;').run(id);
+    stmt('DELETE FROM memory_triples WHERE conversation_id=?;').run(id);
+    stmt('DELETE FROM conversations WHERE id=?;').run(id);
   })();
 }
 
 export function deleteTurns(convId: string): void {
-  db.prepare('DELETE FROM turns WHERE conv_id=?;').run(convId);
+  stmt('DELETE FROM turns WHERE conv_id=?;').run(convId);
 }
 
 function loadTurns(convId: string): Turn[] {
-  const rows = db.prepare('SELECT data FROM turns WHERE conv_id=? ORDER BY created_at;').all(convId) as Array<{
+  const rows = stmt('SELECT data FROM turns WHERE conv_id=? ORDER BY created_at;').all(convId) as Array<{
     data: string;
   }>;
   return rows.map((r) => parseTurn(r.data));
@@ -429,7 +438,7 @@ export function deleteTemplate(id: string): void {
 
 // MARK: cost_log — 每次会话完成时记一笔,用于成本看板趋势图
 export function logCost(convId: string, engine: string, amount: number, tokens: number): void {
-  db.prepare('INSERT INTO cost_log(id, conv_id, engine, amount, tokens, ts) VALUES(?,?,?,?,?,?);')
+  stmt('INSERT INTO cost_log(id, conv_id, engine, amount, tokens, ts) VALUES(?,?,?,?,?,?);')
     .run(rid(), convId, engine, amount, tokens, Date.now());
 }
 export function costStats(): { today: number; week: number; month: number; byEngine: Record<string, number>; byDay: Array<{ date: string; cost: number }> } {

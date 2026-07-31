@@ -162,8 +162,12 @@ function applyI18nDOM(): void {
     // 转发 conversation 更新给所有插件 iframe (替代轮询)
     // Forward conversation updates to all plugin iframes (replaces polling)
     // 每个插件收到的 target 必须匹配自己的 source 名
-    for (const panel of pluginPanelRegistry) {
-      broadcastToPlugins({ target: panel.name, type: 'conversationUpdate', conv });
+    // 只在 done/error(回合结束)时转发 —— 每个流式 token/tool 都发会导致大量 postMessage
+    // 序列化整个 conv 对象(含所有 turns + tool result 原文),严重浪费内存和 CPU。
+    if (conv.status === 'ready') {
+      for (const panel of pluginPanelRegistry) {
+        broadcastToPlugins({ target: panel.name, type: 'conversationUpdate', conv });
+      }
     }
   });
   api.onConversationRemoved((id) => {
@@ -175,13 +179,38 @@ function applyI18nDOM(): void {
     if (currentView === 'workbench') renderWorkbench();
     if (currentView === 'town') townOnConversationChanged();
   });
+  // 非 token 事件(tool/cost/status/context)的 renderMain 做 debounce:
+  // AgentLoop 一轮 ReAct 可能连发多个 tool+cost 事件,每次 renderMain 全量重建 DOM +
+  // markdown 渲染所有 turn,导致 O(n²) CPU + 大量临时 DOM 节点(内存泄漏的主因)。
+  // done/error/sessionStarted 立即渲染;tool/cost/status/context 攒到下一帧合并一次。
+  let renderMainPending = false;
+  let pendingFullRender = false;
+  function scheduleRenderMain(): void {
+    if (renderMainPending) { pendingFullRender = true; return; }
+    renderMainPending = true;
+    pendingFullRender = false;
+    requestAnimationFrame(() => {
+      renderMainPending = false;
+      if (pendingFullRender) { pendingFullRender = false; scheduleRenderMain(); }
+      renderMain();
+    });
+  }
+
   api.onAgentEvent((convId, ev) => {
     const conv = convs.get(convId);
     if (!conv) return;
     applyEvent(conv, ev);
     if (convId === selectedId) {
-      if (ev.type === 'token') streamAppend(ev.text);
-      else renderMain();
+      if (ev.type === 'token') {
+        streamAppend(ev.text);
+      } else if (ev.type === 'done' || ev.type === 'error') {
+        // done/error 必须立即渲染(状态切换 + 最终 answer markdown)
+        if (renderMainPending) { renderMainPending = false; pendingFullRender = false; }
+        renderMain();
+      } else {
+        // tool/cost/status/context — debounce 到下一帧
+        scheduleRenderMain();
+      }
       // Artifact 检测:done 时最终检测一次(流式期间已有防抖检测)
       if (ev.type === 'done') {
         const html = detectArtifact(conv.turns[conv.turns.length - 1]?.answer ?? '');
