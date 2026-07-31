@@ -83,12 +83,13 @@
   position: relative;
   padding: 16px 12px 12px;
   border-radius: 14px;
-  transition: background .25s ease, transform .2s ease;
+  transition: background var(--dur-normal) var(--ease-out), transform var(--dur-normal) var(--ease-out);
   cursor: default;
 }
 .town-house:hover {
   background: var(--town-hover, rgba(255,255,255,0.03));
 }
+.town-house:active { transform: scale(0.98); }
 
 /* 屋顶标签(项目名) / Roof label (project name) */
 .house-roof-label {
@@ -106,7 +107,8 @@
 /* 房子 SVG 容器 / House SVG container */
 .house-svg {
   filter: drop-shadow(0 4px 10px rgba(0,0,0,0.18));
-  transition: transform .25s ease;
+  transition: transform var(--dur-normal) var(--ease-out);
+  transform-origin: center bottom;
 }
 .town-house:hover .house-svg {
   transform: translateY(-3px) scale(1.03);
@@ -150,11 +152,12 @@
   align-items: center;
   cursor: pointer;
   position: relative;
-  transition: transform .15s ease;
+  transition: transform var(--dur-normal) var(--ease-spring);
 }
 .villager-wrap:hover {
   transform: scale(1.15);
 }
+.villager-wrap:active { transform: scale(1.05); }
 .villager-name {
   font-size: 9px;
   color: var(--text-faint);
@@ -205,7 +208,7 @@
 .house-actions {
   margin-top: 8px;
   opacity: 0;
-  transition: opacity .2s;
+  transition: opacity var(--dur-normal) var(--ease-out);
 }
 .town-house:hover .house-actions {
   opacity: 1;
@@ -221,6 +224,7 @@
   color: var(--text-dim);
   padding: 80px 20px;
   font-size: 14px;
+  animation: fadeIn var(--dur-slow) var(--ease-out);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -237,7 +241,7 @@
   -webkit-backdrop-filter: blur(4px);
   opacity: 0;
   pointer-events: none;
-  transition: opacity .2s ease;
+  transition: opacity var(--dur-normal) var(--ease-out);
 }
 #town-backdrop.open {
   opacity: 1;
@@ -262,7 +266,8 @@
   flex-direction: column;
   opacity: 0;
   pointer-events: none;
-  transition: opacity .2s ease, transform .2s ease;
+  transition: opacity var(--dur-normal) var(--ease-out), transform var(--dur-normal) var(--ease-out);
+  will-change: transform, opacity;
 }
 #town-panel.open {
   opacity: 1;
@@ -298,6 +303,7 @@
   font-size: 11px;
   color: var(--text-dim);
 }
+.tp-state { transition: color var(--dur-normal) var(--ease-out); }
 .tp-state.vs-working { color: var(--accent); }
 .tp-state.vs-error { color: #ef4444; }
 .tp-state.vs-done { color: #22c55e; }
@@ -363,6 +369,9 @@
   background: var(--bg);
   border-radius: 6px;
   padding: 6px 10px;
+  animation: tp-step-in var(--dur-normal) var(--ease-out);
+}
+@keyframes tp-step-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   margin-bottom: 4px;
   font-size: 11px;
 }
@@ -401,7 +410,9 @@
   font-size: 12px;
   color: #ef4444;
   margin-bottom: 14px;
+  animation: tp-error-in var(--dur-slow) var(--ease-out);
 }
+@keyframes tp-error-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
 /* 面板底部 / Panel footer */
 .tp-footer {
@@ -424,6 +435,7 @@
   color: var(--text);
   font-size: 13px;
   outline: none;
+  transition: border-color var(--dur-fast) var(--ease-out);
 }
 .tp-input:focus {
   border-color: var(--accent);
@@ -484,12 +496,13 @@
 }
 
 /* 用户偏好减少动画 / Respect reduced motion */
+/* prefers-reduced-motion — 全局覆盖,不仅是村民动画。
+   Apple HIG:前庭敏感用户需要禁用所有运动。 */
 @media (prefers-reduced-motion: reduce) {
-  .villager-wrap.vs-idle .villager-svg,
-  .villager-wrap.vs-working .villager-svg,
-  .villager-wrap.vs-error .villager-svg,
-  .villager-wrap.vs-done .villager-svg {
-    animation: none;
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
@@ -517,6 +530,7 @@
 /* 远程房子与本地房子风格统一,但加微妙的冷色调边框 / Remote house: subtle cool-tone border */
 .town-remote {
   border-color: rgba(125, 211, 252, 0.12);
+  transition: opacity var(--dur-slow) var(--ease-out), border-color var(--dur-slow) var(--ease-out);
 }
 .town-remote.online {
   border-color: rgba(125, 211, 252, 0.2);

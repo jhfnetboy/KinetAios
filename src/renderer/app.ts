@@ -3589,7 +3589,7 @@ async function openCtxInspector(convId: string): Promise<void> {
   const barFill = document.getElementById('ctx-insp-bar-fill')!;
   const pct = r.modelMax ? Math.min(100, Math.round(((r.tokens ?? 0) / r.modelMax) * 100)) : 0;
   tokEl.textContent = `${((r.tokens ?? 0) / 1000).toFixed(1)}k / ${((r.modelMax ?? 128000) / 1000).toFixed(0)}k (${pct}%)`;
-  barFill.style.width = pct + '%';
+  barFill.style.transform = 'scaleX(' + (pct / 100) + ')';
   barFill.className = 'ctx-insp-bar-fill' + (pct > 80 ? ' danger' : pct > 60 ? ' warn' : '');
   // 引擎标签
   const engEl = document.getElementById('ctx-insp-engine')!;
@@ -3642,7 +3642,7 @@ async function saveCtxInspector(): Promise<void> {
       const barFill = document.getElementById('ctx-insp-bar-fill')!;
       const pct = tr.modelMax ? Math.min(100, Math.round(((tr.tokens ?? 0) / tr.modelMax) * 100)) : 0;
       tokEl.textContent = `${((tr.tokens ?? 0) / 1000).toFixed(1)}k / ${((tr.modelMax ?? 128000) / 1000).toFixed(0)}k (${pct}%)`;
-      barFill.style.width = pct + '%';
+      barFill.style.transform = 'scaleX(' + (pct / 100) + ')';
       barFill.className = 'ctx-insp-bar-fill' + (pct > 80 ? ' danger' : pct > 60 ? ' warn' : '');
     }
     setTimeout(() => { status.textContent = ''; }, 2000);
