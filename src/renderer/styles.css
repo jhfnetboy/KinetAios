@@ -985,15 +985,17 @@ a { color: var(--accent); }
 
 .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-faint); gap: 6px; }
 
-/* settings — scrollbar-gutter:stable 预留滚动条空间,切换 tab 时不会因滚动条出现/消失导致宽度跳变。
-   注意:overflow-y 必须在 #settings 上(而非 #settings-view),否则两层滚动条竞争导致宽度跳变。 */
+/* settings — 宽度跳变根治:
+   overflow-y:scroll 始终显示滚动条(配合 ::-webkit-scrollbar width:8px),
+   避免 display:none→block 切换 panel 时滚动条出现/消失导致宽度跳变。
+   注意:scrollbar-gutter:stable 在有 ::-webkit-scrollbar 自定义时无效(Chromium 已知行为)。 */
 #settings-view { overflow: hidden; }
-#settings { padding: 28px 24px 48px; overflow-y: auto; max-width: 720px; margin: 0 auto; scrollbar-gutter: stable; flex: 1; min-height: 0; }
+#settings { width: 100%; padding: 28px 24px 48px; overflow-y: scroll; max-width: 720px; margin: 0 auto; flex: 1; min-height: 0; box-sizing: border-box; }
 #settings .card { width: 100%; max-width: 620px; box-sizing: border-box; overflow: hidden; }
 #settings h2 { margin: 0 0 4px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
 #settings .sub { color: var(--text-dim); margin-bottom: 20px; font-size: 13px; line-height: 1.6; }
-/* 设置页 tab 导航(模型/行为/高级/多机协作) */
-.s-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
+/* 设置页 tab 导航(模型/行为/高级/插件/多机协作) — 固定布局,不受 panel 内容影响 */
+.s-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 18px; width: 100%; box-sizing: border-box; }
 .s-tab { padding: 8px 16px; font-size: 13px; border: none; background: none; color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent; transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); flex-shrink: 0; white-space: nowrap; }
 .s-tab:hover { color: var(--text); }
 .s-tab:focus { outline: none; }
