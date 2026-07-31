@@ -2585,6 +2585,162 @@ button.sm { padding: 3px 8px; font-size: 11px; }
   box-shadow: 0 0 12px rgba(212,64,74,0.25);
 }
 
+/* ═════════════════════════════════════════════════════════════
+   SEED: 聊天区背景机甲装饰 / Chat area mecha background FX
+   HUD 网格 + 四角十字准星 + 装甲板气泡
+   ═════════════════════════════════════════════════════════════ */
+
+/* SEED: 聊天消息区 — HUD 网格背景 / Chat turns area HUD grid background */
+[data-theme="seed"] #turns {
+  background-color: var(--bg);
+  background-image:
+    /* 细网格 / fine grid */
+    linear-gradient(rgba(127,204,25,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(127,204,25,0.025) 1px, transparent 1px),
+    /* 粗网格 / coarse grid */
+    linear-gradient(rgba(127,204,25,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(127,204,25,0.035) 1px, transparent 1px);
+  background-size: 20px 20px, 20px 20px, 80px 80px, 80px 80px;
+}
+
+/* SEED: 聊天区四角十字准星 / Chat area corner reticles */
+[data-theme="seed"] #chat-view {
+  position: relative;
+}
+[data-theme="seed"] #chat-view::before,
+[data-theme="seed"] #chat-view::after {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  z-index: 5;
+  border-color: rgba(127,204,25,0.25);
+  border-style: solid;
+  border-width: 0;
+}
+/* 左上角 / top-left (below chat-head) */
+[data-theme="seed"] #chat-view::before {
+  top: 48px;
+  left: 0;
+  border-top-width: 1.5px;
+  border-left-width: 1.5px;
+}
+/* 右下角 / bottom-right */
+[data-theme="seed"] #chat-view::after {
+  bottom: 0;
+  right: 0;
+  border-bottom-width: 1.5px;
+  border-right-width: 1.5px;
+}
+
+/* SEED: 右上 + 左下角准星(经 #chat-content) / Top-right + bottom-left via chat-content */
+[data-theme="seed"] #chat-content {
+  position: relative;
+}
+[data-theme="seed"] #chat-content::before,
+[data-theme="seed"] #chat-content::after {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  z-index: 5;
+  border-color: rgba(127,204,25,0.25);
+  border-style: solid;
+  border-width: 0;
+}
+[data-theme="seed"] #chat-content::before {
+  top: 0;
+  right: 0;
+  border-top-width: 1.5px;
+  border-right-width: 1.5px;
+}
+[data-theme="seed"] #chat-content::after {
+  bottom: 0;
+  left: 0;
+  border-bottom-width: 1.5px;
+  border-left-width: 1.5px;
+}
+
+/* SEED: 聊天头 — 军事 HUD 条 / Chat header military HUD bar */
+[data-theme="seed"] .chat-head {
+  background: linear-gradient(180deg, var(--bg-side) 0%, var(--bg) 100%);
+  border-bottom: 1px solid var(--seed-metal);
+  box-shadow: 0 1px 0 rgba(127,204,25,0.06);
+}
+
+/* SEED: 输入框区 — 金属面板 / Input area metal panel */
+[data-theme="seed"] #input {
+  background: var(--bg-side);
+  border-top: 1px solid var(--seed-metal);
+  box-shadow: 0 -1px 0 rgba(127,204,25,0.04);
+}
+
+/* SEED: 消息气泡 — 装甲板风 / Message bubbles = armor panels */
+[data-theme="seed"] .msg .bubble {
+  border: 1px solid var(--seed-metal);
+  box-shadow:
+    0 0 0 1px rgba(127,204,25,0.03),
+    inset 0 1px 0 rgba(255,255,255,0.02),
+    var(--shadow-sm);
+}
+
+/* SEED: AI 头像 — 机甲监视器风 / AI avatar = mech sensor */
+[data-theme="seed"] .msg.ai .avatar {
+  background: var(--bg-elev);
+  border: 1px solid var(--seed-metal);
+  box-shadow: 0 0 6px rgba(127,204,25,0.10), inset 0 0 4px rgba(127,204,25,0.04);
+}
+[data-theme="seed"] .msg.user .avatar {
+  background: linear-gradient(135deg, rgba(212,64,74,0.20), rgba(180,40,50,0.15));
+  border: 1px solid rgba(212,64,74,0.30);
+}
+
+/* SEED: composer — HUD 输入框 / Composer = HUD input */
+[data-theme="seed"] #composer {
+  background: var(--bg-input);
+  border: 1px solid var(--seed-metal);
+}
+[data-theme="seed"] #composer:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(127,204,25,0.20), 0 0 12px rgba(127,204,25,0.06);
+}
+
+/* SEED: composer-bar — 金属控制台 / Composer bar = metal console */
+[data-theme="seed"] .composer-bar {
+  border-top: 1px solid var(--border-soft);
+}
+
+/* SEED: tool 按钮 — 军事功能键 / Tool buttons = military function keys */
+[data-theme="seed"] .composer-bar .tool {
+  border: 1px solid var(--border-soft);
+  background: rgba(127,204,25,0.02);
+  transition: all var(--dur-fast) var(--ease-out);
+}
+[data-theme="seed"] .composer-bar .tool:hover {
+  background: rgba(127,204,25,0.08);
+  border-color: rgba(127,204,25,0.20);
+  color: var(--accent);
+}
+
+/* SEED: 滚动条 — 绿光 / Scrollbar green */
+[data-theme="seed"] #turns::-webkit-scrollbar-thumb {
+  background: rgba(127,204,25,0.12);
+}
+[data-theme="seed"] #turns::-webkit-scrollbar-thumb:hover {
+  background: rgba(127,204,25,0.25);
+}
+[data-theme="seed"] #turns::-webkit-scrollbar-track {
+  background: rgba(127,204,25,0.02);
+}
+
+/* SEED: 打字指示器 — ZAFT 绿 / Typing indicator = ZAFT green */
+[data-theme="seed"] .typing i {
+  background: var(--seed-green);
+  box-shadow: 0 0 4px rgba(127,204,25,0.40);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    Visual Inspector — 圈选标注模态框 / Inspect annotation modal
    ═══════════════════════════════════════════════════════════════════════ */
