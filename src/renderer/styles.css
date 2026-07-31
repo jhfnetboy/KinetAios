@@ -1996,10 +1996,14 @@ button.sm { padding: 3px 8px; font-size: 11px; }
   background-size: 32px 32px, 32px 32px, 8px 8px, 6px 6px;
 }
 
-/* Craft: 背景装饰角色 — 用 ::before 伪元素放 Minecraft 经典角色群
-   纯像素 SVG data URI,零网络请求。
-   12 种角色/实体散布在聊天区各处,opacity 0.2 让它们清晰可见但不干扰阅读。
-   所有 SVG shape-rendering=crispEdges 保证像素锐利。 */
+/* Craft: 背景装饰角色 — 严格按照 Minecraft 原版材质的 8x8 脸部像素布局
+   纯像素 SVG data URI,零网络请求,shape-rendering=crispEdges。
+   色值参照 MC 原版材质:
+     绿色系: #5a8c3a(浅) #3d5a22(深) #4a7a2a(中)
+     黑色眼嘴: #1e1b1e
+     Steve 肤色: #b88458 / 发: #4a3020 / 眼白: #ffffff / 瞳: #3366aa
+     衣服蓝: #009cdc
+   opacity 0.22,角色散布在聊天区上下左右各处。 */
 [data-theme="craft"] #main::before {
   content: '';
   position: absolute;
@@ -2007,58 +2011,64 @@ button.sm { padding: 3px 8px; font-size: 11px; }
   z-index: 0;
   pointer-events: none;
   background-image:
-    /* 1. Steve — 棕发 肤色脸 青衣 棕裤 */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect x='2' y='1' width='4' height='1' fill='%235a3a1a'/%3E%3Crect x='1' y='2' width='6' height='3' fill='%23c8a060'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%235a3a1a'/%3E%3Crect x='5' y='2' width='1' height='1' fill='%235a3a1a'/%3E%3Crect x='3' y='3' width='1' height='1' fill='%23ffffff'/%3E%3Crect x='4' y='3' width='1' height='1' fill='%23ffffff'/%3E%3Crect x='3' y='4' width='2' height='1' fill='%23806040'/%3E%3Crect x='2' y='5' width='4' height='2' fill='%230099cc'/%3E%3Crect x='1' y='7' width='3' height='1' fill='%23554030'/%3E%3Crect x='4' y='7' width='3' height='1' fill='%23554030'/%3E%3C/svg%3E"),
-    /* 2. Creeper — 经典草绿苦力怕脸 */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect x='1' y='1' width='6' height='6' fill='%235db340'/%3E%3Crect x='2' y='1' width='1' height='1' fill='%23408020'/%3E%3Crect x='5' y='1' width='1' height='1' fill='%23408020'/%3E%3Crect x='1' y='2' width='1' height='1' fill='%236ec350'/%3E%3Crect x='6' y='2' width='1' height='1' fill='%236ec350'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%233d2818'/%3E%3Crect x='5' y='2' width='1' height='1' fill='%233d2818'/%3E%3Crect x='3' y='3' width='2' height='1' fill='%233d2818'/%3E%3Crect x='3' y='4' width='2' height='3' fill='%233d2818'/%3E%3Crect x='2' y='5' width='1' height='2' fill='%233d2818'/%3E%3Crect x='5' y='5' width='1' height='2' fill='%233d2818'/%3E%3C/svg%3E"),
-    /* 3. 猪 — 粉色猪脸 */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e8a0a8'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23d09098'/%3E%3Crect x='5' y='2' width='1' height='1' fill='%23d09098'/%3E%3Crect x='3' y='3' width='1' height='1' fill='%233d2818'/%3E%3Crect x='4' y='3' width='1' height='1' fill='%233d2818'/%3E%3Crect x='3' y='5' width='2' height='1' fill='%23d08080'/%3E%3Crect x='3' y='6' width='1' height='1' fill='%23d08080'/%3E%3Crect x='4' y='6' width='1' height='1' fill='%23d08080'/%3E%3C/svg%3E"),
-    /* 4. 末影人 — 黑色高瘦身影视剪影 + 紫色眼睛 */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect x='3' y='0' width='2' height='8' fill='%23151515'/%3E%3Crect x='2' y='2' width='1' height='4' fill='%23151515'/%3E%3Crect x='5' y='2' width='1' height='4' fill='%23151515'/%3E%3Crect x='3' y='3' width='1' height='1' fill='%23cc44ff'/%3E%3Crect x='4' y='3' width='1' height='1' fill='%23cc44ff'/%3E%3C/svg%3E"),
-    /* 5. 骷髅 — 白色骷髅脸 + 黑色眼洞 */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect x='2' y='1' width='4' height='5' fill='%23e0e0d0'/%3E%3Crect x='2' y='1' width='4' height='1' fill='%23c0c0b0'/%3E%3Crect x='2' y='3' width='1' height='1' fill='%23151515'/%3E%3Crect x='3' y='3' width='1' height='1' fill='%23151515'/%3E%3Crect x='4' y='3' width='1' height='1' fill='%23151515'/%3E%3Crect x='5' y='3' width='1' height='1' fill='%23151515'/%3E%3Crect x='3' y='5' width='2' height='1' fill='%23151515'/%3E%3Crect x='2' y='6' width='1' height='1' fill='%23e0e0d0'/%3E%3Crect x='5' y='6' width='1' height='1' fill='%23e0e0d0'/%3E%3C/svg%3E"),
-    /* 6. 僵尸 — 绿色头 + 深蓝身体 */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect x='2' y='1' width='4' height='3' fill='%235a8a3a'/%3E%3Crect x='2' y='3' width='1' height='1' fill='%233d2818'/%3E%3Crect x='3' y='3' width='1' height='1' fill='%23151515'/%3E%3Crect x='4' y='3' width='1' height='1' fill='%23151515'/%3E%3Crect x='5' y='3' width='1' height='1' fill='%233d2818'/%3E%3Crect x='2' y='4' width='4' height='2' fill='%23335577'/%3E%3Crect x='1' y='6' width='3' height='1' fill='%23224455'/%3E%3Crect x='4' y='6' width='3' height='1' fill='%23224455'/%3E%3C/svg%3E"),
-    /* 7. 牛 — 棕白奶牛脸 */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect x='2' y='2' width='4' height='4' fill='%238b6b4a'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23e0d0c0'/%3E%3Crect x='5' y='2' width='1' height='1' fill='%23e0d0c0'/%3E%3Crect x='2' y='3' width='2' height='2' fill='%23e0d0c0'/%3E%3Crect x='3' y='3' width='1' height='1' fill='%23151515'/%3E%3Crect x='4' y='3' width='1' height='1' fill='%23151515'/%3E%3Crect x='5' y='4' width='1' height='1' fill='%233d2818'/%3E%3Crect x='3' y='5' width='2' height='1' fill='%23e0d0c0'/%3E%3C/svg%3E"),
-    /* 8. 鸡 — 白色像素鸡 */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect x='3' y='1' width='2' height='1' fill='%23e03030'/%3E%3Crect x='3' y='2' width='2' height='3' fill='%23f0f0e0'/%3E%3Crect x='3' y='3' width='1' height='1' fill='%23151515'/%3E%3Crect x='4' y='3' width='1' height='1' fill='%23151515'/%3E%3Crect x='4' y='5' width='1' height='1' fill='%23e0a030'/%3E%3Crect x='2' y='6' width='2' height='1' fill='%23e0a030'/%3E%3Crect x='4' y='6' width='2' height='1' fill='%23e0a030'/%3E%3C/svg%3E"),
-    /* 9. 蜘蛛 — 红黑大蜘蛛 */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect x='3' y='3' width='2' height='2' fill='%233a1a1a'/%3E%3Crect x='1' y='2' width='1' height='1' fill='%233a1a1a'/%3E%3Crect x='6' y='2' width='1' height='1' fill='%233a1a1a'/%3E%3Crect x='0' y='4' width='1' height='1' fill='%233a1a1a'/%3E%3Crect x='7' y='4' width='1' height='1' fill='%233a1a1a'/%3E%3Crect x='1' y='6' width='1' height='1' fill='%233a1a1a'/%3E%3Crect x='6' y='6' width='1' height='1' fill='%233a1a1a'/%3E%3Crect x='3' y='3' width='1' height='1' fill='%23d03030'/%3E%3Crect x='4' y='3' width='1' height='1' fill='%23d03030'/%3E%3C/svg%3E"),
-    /* 10. 村民 — 大鼻子村民 */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect x='2' y='1' width='4' height='3' fill='%235a8a5a'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%235a8a5a'/%3E%3Crect x='3' y='2' width='1' height='1' fill='%23404050'/%3E%3Crect x='4' y='2' width='1' height='1' fill='%23404050'/%3E%3Crect x='5' y='2' width='1' height='1' fill='%235a8a5a'/%3E%3Crect x='3' y='3' width='2' height='1' fill='%23c4a882'/%3E%3Crect x='2' y='4' width='4' height='2' fill='%237a5a3a'/%3E%3Crect x='1' y='6' width='3' height='1' fill='%23554030'/%3E%3Crect x='4' y='6' width='3' height='1' fill='%23554030'/%3E%3C/svg%3E"),
-    /* 11. 史莱姆 — 绿色半透明果冻 */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect x='2' y='2' width='4' height='5' fill='%235db340' fill-opacity='0.75'/%3E%3Crect x='1' y='3' width='1' height='3' fill='%235db340' fill-opacity='0.5'/%3E%3Crect x='6' y='3' width='1' height='3' fill='%235db340' fill-opacity='0.5'/%3E%3Crect x='2' y='3' width='1' height='1' fill='%23151515'/%3E%3Crect x='3' y='3' width='1' height='1' fill='%23151515'/%3E%3Crect x='4' y='3' width='1' height='1' fill='%23151515'/%3E%3Crect x='5' y='3' width='1' height='1' fill='%23151515'/%3E%3Crect x='3' y='4' width='2' height='1' fill='%23408020'/%3E%3C/svg%3E"),
-    /* 12. 钻石 — 经典蓝青色钻石方块 */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Crect x='1' y='1' width='6' height='6' fill='%233ab5a0'/%3E%3Crect x='2' y='1' width='4' height='1' fill='%2360d0c0'/%3E%3Crect x='1' y='2' width='1' height='4' fill='%2360d0c0'/%3E%3Crect x='6' y='2' width='1' height='4' fill='%23208070'/%3E%3Crect x='2' y='6' width='4' height='1' fill='%23208070'/%3E%3Crect x='3' y='3' width='2' height='2' fill='%2380e0d0'/%3E%3C/svg%3E");
+    /* 1. ★ Creeper 苦力怕脸 — 精确 MC 原版布局
+       绿色底,两只 2x2 方眼 + 倒 T 字嘴巴
+       眼: row2 col2-3 & col5-6
+       嘴: row3-4 col3-4(竖) + row5 col1-6(横底) */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3C!-- row0 全绿底 --%3E%3Crect width='8' height='8' fill='%235a8c3a'/%3E%3C!-- 深色杂点(原版有纹理变化) --%3E%3Crect x='1' y='0' width='1' height='1' fill='%233d5a22'/%3E%3Crect x='4' y='0' width='1' height='1' fill='%233d5a22'/%3E%3Crect x='6' y='0' width='1' height='1' fill='%234a7a2a'/%3E%3Crect x='0' y='2' width='1' height='1' fill='%234a7a2a'/%3E%3Crect x='7' y='1' width='1' height='1' fill='%233d5a22'/%3E%3Crect x='7' y='4' width='1' height='1' fill='%234a7a2a'/%3E%3Crect x='0' y='5' width='1' height='1' fill='%233d5a22'/%3E%3Crect x='7' y='6' width='1' height='1' fill='%233d5a22'/%3E%3Crect x='3' y='7' width='1' height='1' fill='%234a7a2a'/%3E%3C!-- 左眼 2x2 --%3E%3Crect x='2' y='2' width='2' height='2' fill='%231e1b1e'/%3E%3C!-- 右眼 2x2 --%3E%3Crect x='5' y='2' width='2' height='2' fill='%231e1b1e'/%3E%3C!-- 嘴上部(眼间连接) --%3E%3Crect x='4' y='2' width='1' height='2' fill='%231e1b1e'/%3E%3C!-- 嘴下部(左右扩张) --%3E%3Crect x='2' y='4' width='5' height='2' fill='%231e1b1e'/%3E%3C!-- 嘴底收窄 --%3E%3Crect x='3' y='6' width='3' height='1' fill='%231e1b1e'/%3E%3Crect x='4' y='7' width='1' height='1' fill='%231e1b1e'/%3E%3C/svg%3E"),
+    /* 2. ★ Steve 脸 — MC 原版 Steve 正面
+       棕色头发 顶行全 + 两侧, 肤色脸,
+       眼白+蓝色瞳孔, 嘴部棕色胡子线条 */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3C!-- 头发(顶行) --%3E%3Crect width='8' height='2' fill='%234a3020'/%3E%3C!-- 脸(肤色) row2-5 --%3E%3Crect y='2' width='8' height='4' fill='%23b88458'/%3E%3C!-- 鬓角(头发延伸) --%3E%3Crect x='0' y='2' width='1' height='3' fill='%234a3020'/%3E%3Crect x='7' y='2' width='1' height='3' fill='%234a3020'/%3E%3C!-- 左眼白 --%3E%3Crect x='1' y='3' width='2' height='1' fill='%23ffffff'/%3E%3C!-- 左瞳孔 --%3E%3Crect x='2' y='3' width='1' height='1' fill='%233366aa'/%3E%3C!-- 右眼白 --%3E%3Crect x='5' y='3' width='2' height='1' fill='%23ffffff'/%3E%3C!-- 右瞳孔 --%3E%3Crect x='5' y='3' width='1' height='1' fill='%233366aa'/%3E%3C!-- 鼻子(肤色深一点) --%3E%3Crect x='3' y='4' width='2' height='1' fill='%23996840'/%3E%3C!-- 嘴/胡子 --%3E%3Crect x='2' y='5' width='4' height='1' fill='%236a4830'/%3E%3C!-- 衣领(蓝) --%3E%3Crect y='6' width='8' height='2' fill='%23009cdc'/%3E%3Crect x='2' y='6' width='4' height='1' fill='%23b88458'/%3E%3C/svg%3E"),
+    /* 3. ★ Zombie 僵尸脸 — MC 原版僵尸正面
+       深绿腐皮, 黑色眼窝, 深色嘴 */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3C!-- 头(深绿腐皮) --%3E%3Crect width='8' height='6' fill='%235a7a3a'/%3E%3C!-- 杂色 --%3E%3Crect x='1' y='0' width='1' height='1' fill='%23405a28'/%3E%3Crect x='5' y='1' width='1' height='1' fill='%23405a28'/%3E%3Crect x='0' y='3' width='1' height='1' fill='%23405a28'/%3E%3C!-- 眼窝(全黑) --%3E%3Crect x='2' y='3' width='2' height='1' fill='%231e1b1e'/%3E%3Crect x='5' y='3' width='2' height='1' fill='%231e1b1e'/%3E%3C!-- 嘴 --%3E%3Crect x='3' y='5' width='3' height='1' fill='%231e1b1e'/%3E%3C!-- 衣服(深蓝) --%3E%3Crect y='6' width='8' height='2' fill='%23294a6b'/%3E%3Crect x='2' y='6' width='4' height='1' fill='%235a7a3a'/%3E%3C/svg%3E"),
+    /* 4. ★ Enderman 末影人 — 纯黑身体 + 粉紫色眼睛 */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3C!-- 全黑底 --%3E%3Crect width='8' height='8' fill='%23161616'/%3E%3C!-- 粉紫色眼睛(标志性的) --%3E%3Crect x='2' y='3' width='2' height='1' fill='%23ff6bff'/%3E%3Crect x='5' y='3' width='2' height='1' fill='%23ff6bff'/%3E%3C!-- 略微的暗纹 --%3E%3Crect x='0' y='0' width='1' height='1' fill='%231e1e1e'/%3E%3Crect x='7' y='7' width='1' height='1' fill='%23101010'/%3E%3C/svg%3E"),
+    /* 5. ★ Skeleton 骷髅 — 象牙白头骨 + 黑色眼洞 + 牙齿 */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3C!-- 头骨底(象牙白) --%3E%3Crect width='8' height='6' fill='%23d4d0c8'/%3E%3C!-- 顶部阴影 --%3E%3Crect y='0' width='8' height='1' fill='%23b0aca0'/%3E%3C!-- 左眼洞 2x2 --%3E%3Crect x='1' y='2' width='2' height='2' fill='%231e1b1e'/%3E%3C!-- 右眼洞 2x2 --%3E%3Crect x='5' y='2' width='2' height='2' fill='%231e1b1e'/%3E%3C!-- 鼻孔 --%3E%3Crect x='3' y='4' width='2' height='1' fill='%231e1b1e'/%3E%3C!-- 嘴/牙齿(交错黑白) --%3E%3Crect x='2' y='5' width='4' height='1' fill='%231e1b1e'/%3E%3Crect x='3' y='5' width='1' height='1' fill='%23d4d0c8'/%3E%3C!-- 下颌延伸 --%3E%3Crect x='2' y='6' width='4' height='2' fill='%23c0bcb0'/%3E%3Crect x='3' y='6' width='1' height='2' fill='%23d4d0c8'/%3E%3Crect x='4' y='6' width='1' height='2' fill='%23d4d0c8'/%3E%3C/svg%3E"),
+    /* 6. ★ Pig 猪 — MC 原版猪脸: 粉色 + 大鼻孔 */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3C!-- 粉色头 --%3E%3Crect width='8' height='8' fill='%23e8a0b0'/%3E%3C!-- 深粉阴影 --%3E%3Crect x='0' y='0' width='8' height='1' fill='%23d08090'/%3E%3Crect x='0' y='7' width='8' height='1' fill='%23d08090'/%3E%3C!-- 眼睛 --%3E%3Crect x='2' y='2' width='1' height='1' fill='%231e1b1e'/%3E%3Crect x='5' y='2' width='1' height='1' fill='%231e1b1e'/%3E%3C!-- 大鼻子(深粉色椭圆) --%3E%3Crect x='2' y='4' width='4' height='2' fill='%23d08090'/%3E%3C!-- 鼻孔 --%3E%3Crect x='3' y='4' width='1' height='1' fill='%231e1b1e'/%3E%3Crect x='4' y='4' width='1' height='1' fill='%231e1b1e'/%3E%3C/svg%3E"),
+    /* 7. ★ Cow 牛 — MC 原版牛脸: 棕色 + 白色条纹 + 角 */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3C!-- 棕色头底 --%3E%3Crect width='8' height='8' fill='%236a4a2a'/%3E%3C!-- 白色脸部花纹 --%3E%3Crect x='2' y='1' width='4' height='4' fill='%23e8e0d0'/%3E%3C!-- 角(灰白) --%3E%3Crect x='0' y='1' width='2' height='1' fill='%23d4d0c8'/%3E%3Crect x='6' y='1' width='2' height='1' fill='%23d4d0c8'/%3E%3C!-- 眼睛 --%3E%3Crect x='2' y='2' width='1' height='1' fill='%231e1b1e'/%3E%3Crect x='5' y='2' width='1' height='1' fill='%231e1b1e'/%3E%3C!-- 鼻孔区域(深棕) --%3E%3Crect x='3' y='5' width='2' height='1' fill='%23403020'/%3E%3Crect x='3' y='4' width='1' height='1' fill='%23403020'/%3E%3Crect x='4' y='4' width='1' height='1' fill='%23403020'/%3E%3C!-- 下巴(灰色) --%3E%3Crect x='2' y='6' width='4' height='2' fill='%23807060'/%3E%3C/svg%3E"),
+    /* 8. ★ Chicken 鸡 — MC 原版鸡脸: 白色 + 红色肉垂 + 黄嘴 */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3C!-- 白色身体 --%3E%3Crect width='8' height='8' fill='%23f0ece0'/%3E%3C!-- 红色肉垂(头顶) --%3E%3Crect x='3' y='0' width='2' height='1' fill='%23e04040'/%3E%3C!-- 眼睛 --%3E%3Crect x='2' y='2' width='1' height='1' fill='%231e1b1e'/%3E%3Crect x='5' y='2' width='1' height='1' fill='%231e1b1e'/%3E%3C!-- 黄色嘴 --%3E%3Crect x='3' y='4' width='2' height='1' fill='%23e0b040'/%3E%3Crect x='3' y='5' width='2' height='1' fill='%23e0b040'/%3E%3C!-- 底部阴影 --%3E%3Crect y='7' width='8' height='1' fill='%23d8d4c8'/%3E%3C/svg%3E"),
+    /* 9. ★ Spider 蜘蛛 — MC 原版蜘蛛正面: 深红黑 + 红色眼 */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3C!-- 透明底(蜘蛛不撑满) --%3E%3Crect width='8' height='8' fill='%23000000' fill-opacity='0'/%3E%3C!-- 腿(左右各3条) --%3E%3Crect x='0' y='1' width='1' height='1' fill='%23291a1a'/%3E%3Crect x='0' y='3' width='1' height='1' fill='%23291a1a'/%3E%3Crect x='0' y='5' width='1' height='1' fill='%23291a1a'/%3E%3Crect x='7' y='1' width='1' height='1' fill='%23291a1a'/%3E%3Crect x='7' y='3' width='1' height='1' fill='%23291a1a'/%3E%3Crect x='7' y='5' width='1' height='1' fill='%23291a1a'/%3E%3C!-- 身体中心(深红) --%3E%3Crect x='2' y='2' width='4' height='4' fill='%23291a1a'/%3E%3C!-- 红色眼(上下) --%3E%3Crect x='3' y='3' width='1' height='1' fill='%23d03030'/%3E%3Crect x='4' y='3' width='1' height='1' fill='%23d03030'/%3E%3Crect x='3' y='5' width='1' height='1' fill='%23d03030'/%3E%3Crect x='4' y='5' width='1' height='1' fill='%23d03030'/%3E%3C/svg%3E"),
+    /* 10. ★ Villager 村民 — MC 原版村民: 绿袍 + 大鼻子 */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3C!-- 棕色头顶(头发) --%3E%3Crect width='8' height='2' fill='%23554030'/%3E%3C!-- 肤色脸 --%3E%3Crect y='2' width='8' height='3' fill='%23b88458'/%3E%3C!-- 眉毛 --%3E%3Crect x='2' y='2' width='1' height='1' fill='%23554030'/%3E%3Crect x='5' y='2' width='1' height='1' fill='%23554030'/%3E%3C!-- 绿色眼睛 --%3E%3Crect x='2' y='3' width='1' height='1' fill='%235a8c3a'/%3E%3Crect x='5' y='3' width='1' height='1' fill='%235a8c3a'/%3E%3C!-- 大鼻子(标志性的) --%3E%3Crect x='3' y='4' width='2' height='2' fill='%23996840'/%3E%3C!-- 嘴 --%3E%3Crect x='3' y='5' width='2' height='1' fill='%236a4830'/%3E%3C!-- 绿色袍子(衣领) --%3E%3Crect y='6' width='8' height='2' fill='%235a8c3a'/%3E%3Crect x='2' y='6' width='4' height='1' fill='%23405a28'/%3E%3C/svg%3E"),
+    /* 11. ★ Slime 史莱姆 — 绿色半透明凝胶 + 眼睛 */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3C!-- 透明底 --%3E%3Crect width='8' height='8' fill='%235a8c3a' fill-opacity='0'/%3E%3C!-- 凝胶体(有透明感) --%3E%3Crect x='1' y='1' width='6' height='6' fill='%235a8c3a' fill-opacity='0.7'/%3E%3C!-- 高光(左上角) --%3E%3Crect x='2' y='2' width='2' height='1' fill='%2380cc60' fill-opacity='0.5'/%3E%3C!-- 眼睛(全黑) --%3E%3Crect x='2' y='3' width='1' height='2' fill='%231e1b1e'/%3E%3Crect x='5' y='3' width='1' height='2' fill='%231e1b1e'/%3E%3C!-- 嘴 --%3E%3Crect x='3' y='5' width='2' height='1' fill='%231e1b1e'/%3E%3C/svg%3E"),
+    /* 12. ★ Diamond 钻石方块 — MC 原版钻石矿石 */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3C!-- 石头底色(深灰) --%3E%3Crect width='8' height='8' fill='%23707070'/%3E%3C!-- 石头纹理(杂点) --%3E%3Crect x='1' y='1' width='1' height='1' fill='%23606060'/%3E%3Crect x='6' y='2' width='1' height='1' fill='%23606060'/%3E%3Crect x='0' y='5' width='1' height='1' fill='%23808080'/%3E%3C!-- 钻石(青蓝色,十字交叉布局) --%3E%3Crect x='2' y='2' width='1' height='1' fill='%2340e0d0'/%3E%3Crect x='4' y='2' width='1' height='1' fill='%2340e0d0'/%3E%3Crect x='3' y='3' width='1' height='1' fill='%2340e0d0'/%3E%3Crect x='5' y='3' width='1' height='1' fill='%2340e0d0'/%3E%3Crect x='2' y='4' width='1' height='1' fill='%2340e0d0'/%3E%3Crect x='4' y='4' width='1' height='1' fill='%2340e0d0'/%3E%3Crect x='3' y='5' width='1' height='1' fill='%2340e0d0'/%3E%3Crect x='5' y='5' width='1' height='1' fill='%2340e0d0'/%3E%3C!-- 钻石高光(亮色) --%3E%3Crect x='2' y='2' width='1' height='1' fill='%2380f0e0'/%3E%3Crect x='3' y='3' width='1' height='1' fill='%2380f0e0'/%3E%3C/svg%3E");
   background-position:
-    5% 6%,      /* Steve  左上 */
-    92% 5%,     /* Creeper 右上 */
-    15% 92%,    /* 猪 左下 */
-    85% 90%,    /* 末影人 右下 */
-    70% 20%,    /* 骷髅 中右上 */
-    30% 50%,    /* 僵尸 中左 */
-    50% 85%,    /* 牛 中下 */
-    8% 35%,     /* 鸡 左中 */
-    88% 55%,    /* 蜘蛛 右中 */
-    40% 10%,    /* 村民 顶部偏左 */
-    60% 65%,    /* 史莱姆 中右下 */
-    25% 72%;    /* 钻石 左下偏右 */
+    5% 6%,      /* Creeper 左上 */
+    92% 5%,     /* Steve 右上 */
+    15% 92%,    /* Zombie 左下 */
+    85% 90%,    /* Enderman 右下 */
+    70% 20%,    /* Skeleton 中右上 */
+    30% 50%,    /* Pig 中左 */
+    50% 85%,    /* Cow 中下 */
+    8% 35%,     /* Chicken 左中 */
+    88% 55%,    /* Spider 右中 */
+    40% 10%,    /* Villager 顶部偏左 */
+    60% 65%,    /* Slime 中右下 */
+    25% 72%;    /* Diamond 左下偏右 */
   background-size:
-    48px 48px,   /* Steve */
-    48px 48px,   /* Creeper */
-    40px 40px,   /* 猪 */
-    40px 40px,   /* 末影人 */
-    40px 40px,   /* 骷髅 */
-    44px 44px,   /* 僵尸 */
-    44px 44px,   /* 牛 */
-    32px 32px,   /* 鸡 (小) */
-    40px 40px,   /* 蜘蛛 */
-    44px 44px,   /* 村民 */
-    36px 36px,   /* 史莱姆 */
-    28px 28px;   /* 钻石 (最小) */
+    56px 56px,   /* Creeper — 最大,标志性 */
+    56px 56px,   /* Steve — 最大,标志性 */
+    48px 48px,   /* Zombie */
+    48px 48px,   /* Enderman */
+    48px 48px,   /* Skeleton */
+    48px 48px,   /* Pig */
+    48px 48px,   /* Cow */
+    40px 40px,   /* Chicken — 稍小 */
+    44px 44px,   /* Spider */
+    48px 48px,   /* Villager */
+    40px 40px,   /* Slime */
+    36px 36px;   /* Diamond — 最小,彩蛋 */
   background-repeat: no-repeat;
-  opacity: 0.22;
+  opacity: 0.25;
 }
 /* Craft: 确保聊天内容在装饰层之上 */
 [data-theme="craft"] #main > * {
