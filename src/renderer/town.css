@@ -236,8 +236,8 @@
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(4px);
   opacity: 0;
   pointer-events: none;
@@ -259,9 +259,9 @@
   max-width: 90vw;
   max-height: 75vh;
   background: var(--bg-elev);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-soft);
   border-radius: 14px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-xl);
   display: flex;
   flex-direction: column;
   opacity: 0;
