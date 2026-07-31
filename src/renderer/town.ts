@@ -258,28 +258,73 @@ export function villagerSVG(engine: EngineKind, state: VillagerState): string {
 // 方块感建筑:零圆角、硬偏移阴影、像素纹理。
 // ═══════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════
+// Minecraft 风格 SVG 生成器 / Minecraft-style SVG generators
+// 设计理念:像素艺术纹理(用 SVG <pattern> + <rect> 铺像素网格)、
+// 3D 斜角光照(上亮下暗 左亮右暗)、Minecraft 原版配色(橡木 / 圆石 / 草方块 / 红砖)。
+// ═══════════════════════════════════════════════════
+
+// ── MC 配色调色板(参照 Minecraft 原版) / MC palette (referencing vanilla MC) ──
+
+/** 橡木板墙配色:6 档明度模拟像素纹理 / Oak plank wall: 6-step luminance */
+const MC_OAK = {
+  lightest: '#b08652', // 橡木最亮(光照面) / brightest oak (lit face)
+  light: '#9a7340',   // 橡木亮 / light oak
+  mid: '#866336',     // 橡木中 / mid oak
+  dark: '#6e5028',    // 橡木暗 / dark oak
+  darkest: '#563d1c', // 橡木最暗(阴影面) / darkest oak (shadow face)
+  line: '#4a3318',    // 木板缝隙线 / plank gap line
+};
+
+/** 圆石/石砖配色:4 档灰色 / Cobblestone / stone brick: 4-step gray */
+const MC_STONE = {
+  light: '#a0a0a0',  // 石头高光 / stone highlight
+  mid: '#808080',    // 石头中 / stone mid
+  dark: '#606060',   // 石头暗 / stone dark
+  darker: '#484848', // 石头最暗 / stone darkest
+  line: '#3a3a3a',   // 砖缝 / mortar line
+};
+
+/** 草方块配色 / Grass block */
+const MC_GRASS = {
+  top: '#7ab84a',    // 草顶 / grass top
+  side: '#866534',   // 泥土侧 / dirt side
+  dark: '#5a4520',   // 泥土暗 / dirt dark
+};
+
+/** 红砖屋顶配色 / Red brick roof */
+const MC_BRICK = {
+  light: '#c47248',  // 砖亮 / brick light
+  mid: '#a85a34',   // 砖中 / brick mid
+  dark: '#82442a',  // 砖暗 / brick dark
+  mortar: '#d5b8a0', // 水泥缝 / mortar
+};
+
 /**
  * MC 风格方块房子 SVG / Minecraft-style blocky house SVG
- * 宽 130 高 125。石砖基座 + 木板墙 + 尖顶 + 方窗 + 烟囱。
- * 配色按 hue 变化但保持低饱和度的"泥土/木头"质感。
+ * 宽 130 高 125。
+ * 设计: 等距伪 3D 方块房屋 — 草方块地基 + 橡木板墙体(像素木板纹理) +
+ *   红砖尖顶(像素砖缝) + 方形玻璃窗(MC 玻璃纹理) + 圆石烟囱(冒烟)。
+ * 光照: 左上为光源,所有面遵循亮(上/左)→ 暗(下/右)的 bevel 光照规则。
  */
 export function mcHouseSVG(cwd: string, agents: Conversation[], _hue?: number): string {
   const hue = _hue ?? hashHue(cwd);
   const hasRunning = agents.some((c) => c.status === 'running');
   const hasError = agents.some((c) => villagerState(c) === 'error');
+  const uid = `h${hue.toFixed(0)}`; // 唯一 ID 防止 pattern 冲突 / unique ID to avoid pattern collision
 
-  // 泥土/木头配色 / earthy/wooden palette (low-sat by hue)
-  const wallTop = `hsl(${hue}, 18%, 56%)`;
-  const wallFront = `hsl(${hue}, 18%, 44%)`;
-  const wallSide = `hsl(${hue}, 18%, 36%)`;
-  const roofColor = `hsl(${(hue + 20) % 360}, 25%, 32%)`;
-  const roofDark = `hsl(${(hue + 20) % 360}, 25%, 24%)`;
-  const stoneLight = '#8a8a8a';
-  const stoneDark = '#6a6a6a';
-  const stoneDarker = '#555555';
-  const woodTrim = `hsl(${(hue + 10) % 360}, 30%, 28%)`;
+  // 按项目 hue 微调橡木色相,但保持 MC 原版的明暗关系 / hue-shift oak palette per project
+  const hue2 = hue % 20 - 10; // ±10 度微调 / ±10 degree jitter
+  const oak = {
+    lightest: `hsl(${30 + hue2}, 42%, 56%)`,
+    light: `hsl(${30 + hue2}, 42%, 48%)`,
+    mid: `hsl(${30 + hue2}, 42%, 40%)`,
+    dark: `hsl(${30 + hue2}, 42%, 32%)`,
+    darkest: `hsl(${30 + hue2}, 42%, 24%)`,
+    line: `hsl(${30 + hue2}, 42%, 16%)`,
+  };
 
-  // 窗户:最多 4 个(2x2),超出用 +N / Windows: max 4 (2x2)
+  // 窗户:最多 4 个(2x2) / Windows: max 4 (2x2)
   const maxWin = 4;
   const shown = agents.slice(0, maxWin);
   const overflow = agents.length - shown.length;
@@ -288,199 +333,375 @@ export function mcHouseSVG(cwd: string, agents: Conversation[], _hue?: number): 
   shown.forEach((conv, i) => {
     const col = i % 2;
     const row = Math.floor(i / 2);
-    const wx = 52 + col * 30;
+    const wx = 50 + col * 32;
     const wy = 48 + row * 22;
     const vs = villagerState(conv);
     const lit = vs === 'working' || vs === 'done';
-    const lightColor = vs === 'error' ? '#ef4444' : vs === 'done' ? '#5db340' : '#fbbf24';
-    const darkFill = vs === 'error' ? '#7f1d1d' : '#2a2a2a';
-    // 方窗(零圆角)+ 十字格 / square window (zero radius) + mullion
-    windows += `<rect x="${wx}" y="${wy}" width="22" height="16" fill="${lit ? lightColor : darkFill}" opacity="${lit ? 0.9 : 0.7}"/>`;
-    windows += `<rect x="${wx}" y="${wy}" width="22" height="16" fill="none" stroke="${woodTrim}" stroke-width="1.5"/>`;
-    windows += `<line x1="${wx + 11}" y1="${wy}" x2="${wx + 11}" y2="${wy + 16}" stroke="${woodTrim}" stroke-width="1"/>`;
-    windows += `<line x1="${wx}" y1="${wy + 8}" x2="${wx + 22}" y2="${wy + 8}" stroke="${woodTrim}" stroke-width="1"/>`;
+    const glassColor = vs === 'error' ? '#ef4444' : vs === 'done' ? '#5db340' : vs === 'working' ? '#fce896' : '#3a4a5a';
+    // MC 玻璃:外框深色 + 玻璃面板 + 像素高光 + 十字格 / MC glass pane
+    windows += `<rect x="${wx}" y="${wy}" width="24" height="18" fill="${oak.darkest}"/>`;
+    // 玻璃面板(内缩 2px) / glass pane (2px inset)
+    windows += `<rect x="${wx + 2}" y="${wy + 2}" width="20" height="14" fill="${glassColor}" opacity="${lit ? 0.88 : 0.55}"/>`;
+    // 像素高光(左上角 4x2) / pixel highlight (top-left corner)
+    windows += `<rect x="${wx + 3}" y="${wy + 3}" width="6" height="2" fill="rgba(255,255,255,0.3)"/>`;
+    // 十字窗框 / mullion cross
+    windows += `<rect x="${wx + 11}" y="${wy + 2}" width="2" height="14" fill="${oak.darkest}"/>`;
+    windows += `<rect x="${wx + 2}" y="${wy + 8}" width="20" height="2" fill="${oak.darkest}"/>`;
+    // 窗户灯光光晕(亮着时) / window glow when lit
+    if (lit) {
+      windows += `<rect x="${wx - 2}" y="${wy - 2}" width="28" height="22" fill="${glassColor}" opacity="0.06"/>`;
+    }
   });
   if (overflow > 0) {
-    windows += `<text x="95" y="112" font-size="9" fill="rgba(140,140,150,0.55)" font-family="system-ui" font-weight="600">+${overflow}</text>`;
+    windows += `<rect x="88" y="104" width="22" height="12" fill="${MC_STONE.darker}"/>`;
+    windows += `<text x="99" y="113" text-anchor="middle" font-size="8" fill="rgba(255,255,255,0.5)" font-family="system-ui" font-weight="700">+${overflow}</text>`;
   }
 
-  // 烟囱(冒烟) / chimney (smoke when running)
+  // ── 烟囱:圆石方块 + 像素烟 / Chimney: cobblestone + pixel smoke ──
   const chimney = hasRunning ? `
-    <rect x="90" y="14" width="10" height="18" fill="${stoneDark}" shape-rendering="crispEdges"/>
-    <rect x="88" y="12" width="14" height="4" fill="${stoneDarker}" shape-rendering="crispEdges"/>
-    <rect x="91" y="18" width="2" height="2" fill="${stoneDarker}" shape-rendering="crispEdges"/>
-    <rect x="94" y="22" width="2" height="2" fill="${stoneDarker}" shape-rendering="crispEdges"/>
-    <circle cx="95" cy="8" r="3" fill="rgba(200,200,210,0.2)">
-      <animate attributeName="cy" values="8;-4;8" dur="2.8s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0.2;0;0.2" dur="2.8s" repeatCount="indefinite"/>
-    </circle>
-    <circle cx="97" cy="11" r="2" fill="rgba(200,200,210,0.14)">
-      <animate attributeName="cy" values="11;-1;11" dur="3.2s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0.14;0;0.14" dur="3.2s" repeatCount="indefinite"/>
-    </circle>` : '';
-
-  const errorFx = hasError ? `
-    <rect x="14" y="22" width="10" height="10" fill="#ef4444" opacity="0.8" shape-rendering="crispEdges">
-      <animate attributeName="opacity" values="0.4;0.8;0.4" dur="1.8s" repeatCount="indefinite"/>
+    <rect x="86" y="14" width="12" height="20" fill="${MC_STONE.dark}"/>
+    <rect x="84" y="12" width="16" height="4" fill="${MC_STONE.darker}"/>
+    <!-- 圆石像素纹理 / cobble pixel texture -->
+    <rect x="87" y="16" width="4" height="3" fill="${MC_STONE.mid}"/>
+    <rect x="93" y="16" width="3" height="3" fill="${MC_STONE.mid}"/>
+    <rect x="88" y="21" width="3" height="3" fill="${MC_STONE.light}"/>
+    <rect x="93" y="22" width="4" height="3" fill="${MC_STONE.mid}"/>
+    <rect x="87" y="27" width="3" height="3" fill="${MC_STONE.light}"/>
+    <rect x="92" y="27" width="4" height="3" fill="${MC_STONE.mid}"/>
+    <!-- 像素烟(方块上升) / pixel smoke (blocky puffs rising) -->
+    <rect x="89" y="9" width="3" height="3" fill="rgba(220,220,225,0.25)">
+      <animate attributeName="y" values="9;0;9" dur="2.4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.25;0;0.25" dur="2.4s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="91" y="6" width="3" height="3" fill="rgba(220,220,225,0.18)">
+      <animate attributeName="y" values="6;-3;6" dur="3s" repeatCount="indefinite" begin="0.5s"/>
+      <animate attributeName="opacity" values="0.18;0;0.18" dur="3s" repeatCount="indefinite" begin="0.5s"/>
     </rect>` : '';
+
+  // ── 错误指示:红色火把(MC 红石火把风) / Error: redstone torch ──
+  const errorFx = hasError ? `
+    <rect x="14" y="88" width="4" height="12" fill="${MC_STONE.darker}"/>
+    <rect x="13" y="82" width="6" height="8" fill="#ef4444">
+      <animate attributeName="opacity" values="0.5;1;0.5" dur="1.4s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="14" y="83" width="2" height="2" fill="#ff7777"/>` : '';
 
   const initial = projName(cwd).charAt(0).toUpperCase();
 
   return `<svg width="130" height="125" viewBox="0 0 130 125" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
-    <!-- 地面阴影(硬偏移,无模糊) / ground shadow (hard offset, no blur) -->
-    <rect x="14" y="114" width="102" height="6" fill="rgba(0,0,0,0.15)"/>
+    <defs>
+      <!-- 橡木板纹理 pattern:4 行木板,每行有缝隙线 + 垂直缝错位 / Oak plank pattern -->
+      <pattern id="oak-${uid}" x="0" y="0" width="16" height="14" patternUnits="userSpaceOnUse">
+        <rect width="16" height="14" fill="${oak.mid}"/>
+        <!-- 木板水平缝隙 / plank horizontal gap -->
+        <rect width="16" height="1" y="0" fill="${oak.line}"/>
+        <!-- 木板纹理:竖纹(年轮感) / wood grain vertical streaks -->
+        <rect x="2" y="2" width="1" height="11" fill="${oak.dark}" opacity="0.4"/>
+        <rect x="7" y="2" width="1" height="11" fill="${oak.light}" opacity="0.2"/>
+        <rect x="11" y="2" width="1" height="11" fill="${oak.dark}" opacity="0.3"/>
+        <!-- 节疤 / knot -->
+        <rect x="5" y="6" width="2" height="2" fill="${oak.dark}" opacity="0.35"/>
+      </pattern>
+      <!-- 红砖纹理 pattern / Red brick pattern -->
+      <pattern id="brick-${uid}" x="0" y="0" width="16" height="8" patternUnits="userSpaceOnUse">
+        <rect width="16" height="8" fill="${MC_BRICK.mid}"/>
+        <!-- 水泥缝 / mortar lines -->
+        <rect width="16" height="1" fill="${MC_BRICK.mortar}"/>
+        <rect x="0" y="4" width="16" height="1" fill="${MC_BRICK.mortar}"/>
+        <!-- 垂直缝(错位) / vertical mortar (offset) -->
+        <rect x="7" y="1" width="1" height="3" fill="${MC_BRICK.mortar}"/>
+        <rect x="0" y="5" width="1" height="3" fill="${MC_BRICK.mortar}"/>
+        <rect x="15" y="5" width="1" height="3" fill="${MC_BRICK.mortar}"/>
+        <!-- 砖面色差 / brick shade variation -->
+        <rect x="1" y="2" width="5" height="2" fill="${MC_BRICK.light}" opacity="0.3"/>
+        <rect x="9" y="2" width="5" height="2" fill="${MC_BRICK.dark}" opacity="0.2"/>
+      </pattern>
+      <!-- 圆石纹理 pattern / Cobblestone pattern -->
+      <pattern id="cobble-${uid}" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
+        <rect width="16" height="16" fill="${MC_STONE.dark}"/>
+        <rect x="1" y="1" width="6" height="6" fill="${MC_STONE.mid}"/>
+        <rect x="9" y="1" width="6" height="4" fill="${MC_STONE.light}" opacity="0.6"/>
+        <rect x="1" y="9" width="4" height="6" fill="${MC_STONE.light}" opacity="0.5"/>
+        <rect x="7" y="7" width="8" height="8" fill="${MC_STONE.mid}"/>
+        <rect x="2" y="2" width="2" height="2" fill="${MC_STONE.light}"/>
+        <rect x="10" y="2" width="2" height="1" fill="${MC_STONE.light}"/>
+        <rect x="8" y="9" width="2" height="2" fill="${MC_STONE.darker}" opacity="0.5"/>
+        <rect x="13" y="12" width="2" height="2" fill="${MC_STONE.darker}" opacity="0.4"/>
+      </pattern>
+    </defs>
 
-    <!-- 石砖基座(2 层) / stone brick base -->
-    <rect x="16" y="96" width="98" height="18" fill="${stoneDark}"/>
-    <rect x="16" y="96" width="98" height="2" fill="${stoneLight}"/>
-    <!-- 石砖纹理线 / brick texture lines -->
-    <line x1="16" y1="105" x2="114" y2="105" stroke="${stoneDarker}" stroke-width="0.8"/>
-    <line x1="40" y1="96" x2="40" y2="105" stroke="${stoneDarker}" stroke-width="0.8"/>
-    <line x1="65" y1="96" x2="65" y2="105" stroke="${stoneDarker}" stroke-width="0.8"/>
-    <line x1="90" y1="96" x2="90" y2="105" stroke="${stoneDarker}" stroke-width="0.8"/>
-    <line x1="28" y1="105" x2="28" y2="114" stroke="${stoneDarker}" stroke-width="0.8"/>
-    <line x1="52" y1="105" x2="52" y2="114" stroke="${stoneDarker}" stroke-width="0.8"/>
-    <line x1="78" y1="105" x2="78" y2="114" stroke="${stoneDarker}" stroke-width="0.8"/>
-    <line x1="102" y1="105" x2="102" y2="114" stroke="${stoneDarker}" stroke-width="0.8"/>
+    <!-- 地面阴影(硬偏移) / ground shadow (hard offset) -->
+    <rect x="8" y="114" width="114" height="5" fill="rgba(0,0,0,0.18)"/>
 
-    <!-- 墙体正面(木板纹理) / wall front (plank texture) -->
-    <rect x="20" y="42" width="90" height="56" fill="${wallFront}"/>
-    <!-- 木板横纹 / plank horizontal lines -->
-    <line x1="20" y1="56" x2="110" y2="56" stroke="${wallSide}" stroke-width="0.6" opacity="0.5"/>
-    <line x1="20" y1="70" x2="110" y2="70" stroke="${wallSide}" stroke-width="0.6" opacity="0.5"/>
-    <line x1="20" y1="84" x2="110" y2="84" stroke="${wallSide}" stroke-width="0.6" opacity="0.5"/>
-    <!-- 墙体顶部高光 / wall top highlight -->
-    <rect x="20" y="42" width="90" height="2" fill="${wallTop}"/>
+    <!-- ═══ 草方块地基(2层) / Grass block foundation ═══ -->
+    <!-- 泥土侧 / dirt side -->
+    <rect x="10" y="96" width="110" height="18" fill="${MC_GRASS.side}"/>
+    <!-- 草顶(1px 绿边) / grass top (1px green edge) -->
+    <rect x="10" y="94" width="110" height="4" fill="${MC_GRASS.top}"/>
+    <!-- 泥土暗纹 / dirt dark texture -->
+    <rect x="14" y="100" width="4" height="4" fill="${MC_GRASS.dark}" opacity="0.5"/>
+    <rect x="30" y="104" width="5" height="3" fill="${MC_GRASS.dark}" opacity="0.4"/>
+    <rect x="52" y="99" width="3" height="4" fill="${MC_GRASS.dark}" opacity="0.5"/>
+    <rect x="70" y="105" width="4" height="3" fill="${MC_GRASS.dark}" opacity="0.4"/>
+    <rect x="88" y="101" width="5" height="4" fill="${MC_GRASS.dark}" opacity="0.5"/>
+    <rect x="104" y="106" width="4" height="3" fill="${MC_GRASS.dark}" opacity="0.4"/>
+    <!-- 草顶像素高光 / grass top pixel highlights -->
+    <rect x="22" y="95" width="3" height="1" fill="#9ad06a"/>
+    <rect x="44" y="95" width="3" height="1" fill="#9ad06a"/>
+    <rect x="68" y="95" width="3" height="1" fill="#9ad06a"/>
+    <rect x="94" y="95" width="3" height="1" fill="#9ad06a"/>
 
-    <!-- 尖顶(三角,零圆角) / pitched roof (triangle, zero radius) -->
-    <polygon points="14,44 65,12 116,44" fill="${roofColor}"/>
-    <!-- 屋顶暗面 / roof dark side -->
-    <polygon points="14,44 65,12 65,44" fill="${roofDark}"/>
-    <!-- 屋顶边缘 / roof edge -->
-    <polygon points="14,44 65,12 116,44 116,47 65,15 14,47" fill="${roofDark}" opacity="0.6"/>
+    <!-- ═══ 墙体:橡木板 / Wall: oak planks ═══ -->
+    <rect x="16" y="42" width="98" height="54" fill="url(#oak-${uid})"/>
+    <!-- 墙体上边高光 / wall top highlight -->
+    <rect x="16" y="42" width="98" height="1" fill="${oak.light}" opacity="0.5"/>
+    <!-- 墙体下边暗 / wall bottom shadow -->
+    <rect x="16" y="95" width="98" height="1" fill="${oak.darkest}" opacity="0.6"/>
+    <!-- 墙体右边暗(bevel) / wall right shadow (bevel) -->
+    <rect x="112" y="42" width="2" height="54" fill="${oak.darkest}" opacity="0.4"/>
+
+    <!-- ═══ 尖顶:红砖 / Roof: red brick ═══ -->
+    <polygon points="10,44 65,12 120,44" fill="url(#brick-${uid})"/>
+    <!-- 屋顶左暗面 / roof left shadow -->
+    <polygon points="10,44 65,12 65,44" fill="rgba(0,0,0,0.18)"/>
+    <!-- 屋脊高光 / roof ridge highlight -->
+    <polygon points="63,12 67,12 67,16 63,16" fill="${MC_BRICK.light}" opacity="0.4"/>
+    <!-- 屋檐底边 / roof eave bottom edge -->
+    <polygon points="10,44 120,44 120,47 10,47" fill="${MC_BRICK.dark}" opacity="0.5"/>
 
     ${chimney}
     ${errorFx}
     ${windows}
 
-    <!-- 门(方块,零圆角) / door (square, zero radius) -->
-    <rect x="56" y="74" width="18" height="22" fill="${woodTrim}"/>
-    <rect x="56" y="74" width="18" height="2" fill="${wallSide}" opacity="0.5"/>
-    <!-- 门把手 / door knob -->
-    <rect x="69" y="85" width="2" height="2" fill="#d4af37"/>
+    <!-- ═══ 门:橡木(深色) / Door: dark oak ═══ -->
+    <rect x="56" y="68" width="18" height="26" fill="${oak.darkest}"/>
+    <!-- 门框 / door frame -->
+    <rect x="54" y="66" width="22" height="2" fill="${oak.dark}"/>
+    <rect x="54" y="92" width="22" height="2" fill="${oak.dark}"/>
+    <!-- 门板纹理(竖线) / door panel vertical lines -->
+    <rect x="60" y="70" width="1" height="20" fill="${oak.line}" opacity="0.4"/>
+    <rect x="65" y="70" width="1" height="20" fill="${oak.line}" opacity="0.4"/>
+    <rect x="70" y="70" width="1" height="20" fill="${oak.line}" opacity="0.4"/>
+    <!-- 门把手(铁锭色) / door knob (iron ingot) -->
+    <rect x="70" y="80" width="2" height="2" fill="#d8d8d8"/>
 
     <!-- 门牌 / door plate -->
-    <rect x="80" y="76" width="10" height="10" fill="${stoneDark}" opacity="0.8"/>
-    <text x="85" y="83.5" text-anchor="middle" font-size="6" fill="rgba(255,255,255,0.4)" font-family="system-ui" font-weight="700">${esc(initial)}</text>
+    <rect x="82" y="70" width="12" height="12" fill="${MC_STONE.darker}"/>
+    <rect x="83" y="71" width="10" height="10" fill="${MC_STONE.dark}"/>
+    <text x="88" y="78.5" text-anchor="middle" font-size="6" fill="rgba(255,255,255,0.45)" font-family="system-ui" font-weight="700">${esc(initial)}</text>
+
+    <!-- 角落圆石装饰 / cobblestone corner detail -->
+    <rect x="16" y="88" width="8" height="8" fill="url(#cobble-${uid})"/>
+    <rect x="106" y="88" width="8" height="8" fill="url(#cobble-${uid})"/>
   </svg>`;
 }
 
 /**
- * MC 风格村民(Steve/Creeper 般的方块小人) / Minecraft-style villager (blocky character)
- * 宽 24 高 36。方块头 + 方块身体 + 像素眼睛。
+ * MC 风格村民 — Steve 风格方块小人 / Minecraft-style villager (Steve-like blocky character)
+ * 宽 22 高 34。头部肤色 + 像素眼 + 头发 + 身体(引擎色衬衫) + 手臂 + 腿。
+ * 设计参照 Minecraft Steve:8x8 头 + 4x8 身体 + 4x3 手臂 + 4x3 腿。
+ * shape-rendering=crispEdges 保证像素清晰。
  */
 export function mcVillagerSVG(engine: EngineKind, state: VillagerState): string {
-  const headColor = ENGINE_COLORS[engine];
+  const engineColor = ENGINE_COLORS[engine];
   const idle = state === 'idle';
   const working = state === 'working';
   const isError = state === 'error';
 
-  // 方块头(零圆角)+ 像素眼 / square head (zero radius) + pixel eyes
-  // 眼睛是两个 2x1 像素方块 / eyes are two 2x1 pixel squares
-  const eyes = idle
-    ? '<rect x="8" y="7" width="2" height="1" fill="#1e1b1e"/><rect x="14" y="7" width="2" height="1" fill="#1e1b1e"/>'
-    : '<rect x="8" y="7" width="2" height="2" fill="#1e1b1e"/><rect x="14" y="7" width="2" height="2" fill="#1e1b1e"/>';
+  // ── Steve 配色 / Steve palette ──
+  const skin = '#c0915a';      // 肤色 / skin
+  const skinDark = '#9a7340';  // 肤色暗 / skin shadow
+  const skinLight = '#d4a673'; // 肤色高光 / skin highlight
+  const hair = '#3a2818';      // 头发(深棕) / hair (dark brown)
+  const hairLight = '#4a3420'; // 头发亮 / hair light
+  const eyeWhite = '#ffffff';  // 眼白 / eye white
+  const eyeColor = '#5a3a1a';  // 瞳色(棕) / iris (brown)
+  const mouth = '#7a5a3a';     // 嘴色 / mouth color
+  const shirt = engineColor;   // 衬衫色 = 引擎色 / shirt = engine color
+  const shirtDark = `hsl(${hashHue(engine)}, 30%, 28%)`;
+  const pants = '#3a3a4a';     // 裤子 / pants
+  const pantsDark = '#2a2a3a';
+  const shoes = '#4a3a20';     // 鞋 / shoes
 
-  // 嘴 / mouth
-  const mouth = isError
-    ? '<rect x="10" y="10" width="4" height="2" fill="#1e1b1e"/>'
-    : '<rect x="11" y="10" width="2" height="1" fill="#1e1b1e"/>';
+  // ── 状态指示 / Status indicators ──
+  // 错误:红石火把(头上冒红色) / Error: redstone torch above head
+  const errFx = isError ? `
+    <rect x="8" y="-6" width="4" height="2" fill="#ef4444">
+      <animate attributeName="opacity" values="0.4;1;0.4" dur="1.2s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="9" y="-8" width="2" height="2" fill="#ff6666">
+      <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.2s" repeatCount="indefinite"/>
+    </rect>` : '';
 
-  // 错误 ! / error indicator
-  const errFx = isError
-    ? `<rect x="8" y="-4" width="8" height="8" fill="#ef4444"/><text x="12" y="1" text-anchor="middle" font-size="6" fill="white" font-weight="bold">!</text>`
-    : '';
+  // 工作中:头顶省略号(像素方块) / Working: pixel ellipsis above head
+  const workFx = working ? `
+    <rect x="4" y="-4" width="2" height="2" fill="rgba(200,200,210,0.6)">
+      <animate attributeName="opacity" values="0.2;0.6;0.2" dur="1.5s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="9" y="-4" width="2" height="2" fill="rgba(200,200,210,0.6)">
+      <animate attributeName="opacity" values="0.2;0.6;0.2" dur="1.5s" repeatCount="indefinite" begin="0.3s"/>
+    </rect>
+    <rect x="14" y="-4" width="2" height="2" fill="rgba(200,200,210,0.6)">
+      <animate attributeName="opacity" values="0.2;0.6;0.2" dur="1.5s" repeatCount="indefinite" begin="0.6s"/>
+    </rect>` : '';
 
-  // 工作中 ... / working indicator
-  const workFx = working
-    ? `<rect x="4" y="-2" width="3" height="3" fill="rgba(120,120,130,0.6)"/><rect x="9" y="-2" width="3" height="3" fill="rgba(120,120,130,0.6)"/><rect x="14" y="-2" width="3" height="3" fill="rgba(120,120,130,0.6)"/>`
-    : '';
+  // done:绿宝石(头上) / Done: emerald above head
+  const doneFx = state === 'done' ? `
+    <rect x="8" y="-6" width="4" height="4" fill="#17b07a"/>
+    <rect x="9" y="-5" width="2" height="1" fill="#2ee8a8"/>
+    <rect x="8" y="-7" width="1" height="1" fill="#2ee8a8"/>
+    <rect x="11" y="-7" width="1" height="1" fill="#2ee8a8"/>` : '';
 
-  // done 星 / done star
-  const doneFx = state === 'done'
-    ? `<text x="12" y="-1" text-anchor="middle" font-size="8" fill="#5db340" opacity="0.9">✦</text>`
-    : '';
-
-  const bodyColor = `hsl(${hashHue(engine)}, 20%, 42%)`;
-  const bodyDark = `hsl(${hashHue(engine)}, 20%, 32%)`;
-
-  return `<svg width="24" height="36" viewBox="-2 -6 28 42" xmlns="http://www.w3.org/2000/svg" class="villager-svg state-${state}" shape-rendering="crispEdges">
+  return `<svg width="22" height="34" viewBox="0 -8 22 42" xmlns="http://www.w3.org/2000/svg" class="villager-svg state-${state}" shape-rendering="crispEdges">
     ${doneFx}${errFx}${workFx}
-    <!-- 脚(方块) / feet (squares) -->
-    <rect x="7" y="30" width="4" height="3" fill="${bodyDark}"/>
-    <rect x="13" y="30" width="4" height="3" fill="${bodyDark}"/>
-    <!-- 身体(方块,零圆角) / body (square, zero radius) -->
-    <rect x="6" y="14" width="12" height="16" fill="${bodyColor}"/>
-    <rect x="6" y="26" width="12" height="4" fill="${bodyDark}"/>
-    <!-- 头(方块,零圆角) / head (square, zero radius) -->
-    <rect x="6" y="3" width="12" height="10" fill="${headColor}"/>
-    <!-- 头部暗边 / head dark edge -->
-    <rect x="6" y="11" width="12" height="2" fill="${bodyDark}" opacity="0.4"/>
-    ${eyes}
-    ${mouth}
+
+    <!-- ═══ 头部(8x8 方块) / Head (8x8 block) ═══ -->
+    <!-- 头发顶 / hair top -->
+    <rect x="4" y="0" width="12" height="2" fill="${hair}"/>
+    <rect x="4" y="2" width="2" height="1" fill="${hair}"/>
+    <rect x="14" y="2" width="2" height="1" fill="${hair}"/>
+    <rect x="6" y="1" width="1" height="1" fill="${hairLight}"/>
+    <rect x="10" y="1" width="1" height="1" fill="${hairLight}"/>
+    <!-- 脸部 / face -->
+    <rect x="6" y="2" width="8" height="6" fill="${skin}"/>
+    <!-- 脸部右侧暗 / face right shadow -->
+    <rect x="12" y="3" width="2" height="5" fill="${skinDark}" opacity="0.3"/>
+    <!-- 脸部顶部高光 / face top highlight -->
+    <rect x="7" y="2" width="5" height="1" fill="${skinLight}" opacity="0.4"/>
+    <!-- 眼睛(Steve 式:白底 + 棕瞳) / Eyes (Steve-style: white + brown iris) -->
+    <rect x="7" y="4" width="2" height="1" fill="${eyeWhite}"/>
+    <rect x="11" y="4" width="2" height="1" fill="${eyeWhite}"/>
+    <rect x="8" y="4" width="1" height="1" fill="${eyeColor}"/>
+    <rect x="12" y="4" width="1" height="1" fill="${eyeColor}"/>
+    <!-- 嘴 / mouth -->
+    <rect x="9" y="6" width="3" height="1" fill="${mouth}"/>
+    <rect x="9" y="7" width="1" height="1" fill="${mouth}" opacity="0.5"/>
+    <rect x="11" y="7" width="1" height="1" fill="${mouth}" opacity="0.5"/>
+
+    <!-- ═══ 颈部 / Neck ═══ -->
+    <rect x="8" y="8" width="4" height="1" fill="${skinDark}"/>
+
+    <!-- ═══ 身体(衬衫 8x6) / Body (shirt 8x6) ═══ -->
+    <rect x="5" y="9" width="10" height="8" fill="${shirt}"/>
+    <!-- 衬衫暗面(右侧) / shirt shadow (right) -->
+    <rect x="12" y="9" width="3" height="8" fill="${shirtDark}" opacity="0.35"/>
+    <!-- 衣领 V / collar -->
+    <rect x="8" y="9" width="4" height="1" fill="${shirtDark}" opacity="0.5"/>
+    <rect x="9" y="10" width="2" height="1" fill="${skinDark}" opacity="0.3"/>
+
+    <!-- ═══ 手臂(左右各 3x6) / Arms (left + right, 3x6 each) ═══ -->
+    <!-- 左手臂 / left arm -->
+    <rect x="2" y="9" width="3" height="6" fill="${shirt}"/>
+    <rect x="2" y="15" width="3" height="2" fill="${skin}"/>
+    <!-- 右手臂(暗) / right arm (shadow) -->
+    <rect x="15" y="9" width="3" height="6" fill="${shirtDark}"/>
+    <rect x="15" y="15" width="3" height="2" fill="${skinDark}"/>
+
+    <!-- ═══ 腿(裤子 4x4 x2) / Legs (pants 4x4 ×2) ═══ -->
+    <rect x="5" y="17" width="4" height="5" fill="${pants}"/>
+    <rect x="11" y="17" width="4" height="5" fill="${pantsDark}"/>
+    <!-- 裤腰暗 / belt shadow -->
+    <rect x="5" y="17" width="10" height="1" fill="${pantsDark}" opacity="0.5"/>
+
+    <!-- ═══ 鞋(4x2 x2) / Shoes (4x2 ×2) ═══ -->
+    <rect x="5" y="22" width="4" height="2" fill="${shoes}"/>
+    <rect x="11" y="22" width="4" height="2" fill="${shoes}"/>
+    <!-- 鞋底暗 / sole dark -->
+    <rect x="5" y="23" width="4" height="1" fill="#2a1a08"/>
+    <rect x="11" y="23" width="4" height="1" fill="#2a1a08"/>
   </svg>`;
 }
 
 /**
- * MC 风格云端房子(钻石方块+云) / Minecraft-style cloud house (diamond block + cloud)
- * 用钻石/水晶方块代替等距房子。
+ * MC 风格云端房子 — 钻石方块塔 + 像素云 / Minecraft-style cloud house (diamond spire + pixel cloud)
+ * 宽 130 高 150。
+ * 设计:钻石/青金方块塔楼(3D 斜角光照) + 像素云朵底座(方块化的 MC 云) +
+ *   发光窗户(MC 红石灯风格) + 尖塔顶(钻石锥)。
  */
 export function mcCloudHouseSVG(name: string, online: boolean, _toolCount: number): string {
-  const hue = hashHue(name);
-  const diaColor = online ? '#3ab5a0' : '#3a6a5a';
-  const diaLight = online ? '#60d0c0' : '#508075';
-  const diaDark = online ? '#208070' : '#205045';
-  const stoneDark = '#6a6a6a';
+  // ── 钻石方块配色 / Diamond block palette ──
+  const dia = {
+    lightest: online ? '#5ee8d8' : '#4a9888',
+    light: online ? '#3ec8b8' : '#3a8074',
+    mid: online ? '#2db0a0' : '#2a685e',
+    dark: online ? '#1e8478' : '#1a4a44',
+    darkest: online ? '#106860' : '#0a3a36',
+    edge: online ? '#0a4a48' : '#062a28',
+  };
+  // ── 青金蓝配色(窗框) / Lapis lazuli (window frame) ──
+  const lapis = online ? '#1a4ab8' : '#1a2a58';
+  // ── 红石灯色(窗户) / Redstone lamp (window glow) ──
+  const lampOn = '#fce896';
+  const lampOff = '#3a3a2a';
 
-  // 窗户 / windows (small)
-  const winColor = online ? '#7dd3fc' : '#2a2a2a';
-  const winLit = online ? 0.85 : 0.5;
+  // 像素云:白色方块组合 / Pixel cloud: white blocky puffs
+  const cloudColor = online ? 'rgba(230,238,245,0.18)' : 'rgba(120,130,140,0.08)';
 
   return `<svg width="130" height="150" viewBox="0 0 130 150" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
-    <!-- 云朵底座(方块化) / blocky cloud -->
-    <ellipse cx="65" cy="135" rx="52" ry="12" fill="rgba(180,190,200,0.15)"/>
-    <rect x="20" y="120" width="90" height="14" fill="rgba(200,210,220,0.08)"/>
-    <rect x="28" y="115" width="74" height="6" fill="rgba(200,210,220,0.06)"/>
+    <!-- ═══ 像素云朵底座 / Pixel cloud base ═══ -->
+    <rect x="22" y="118" width="86" height="12" fill="${cloudColor}"/>
+    <rect x="30" y="112" width="70" height="8" fill="${cloudColor}" opacity="0.7"/>
+    <rect x="38" y="108" width="54" height="6" fill="${cloudColor}" opacity="0.5"/>
+    <rect x="46" y="104" width="38" height="6" fill="${cloudColor}" opacity="0.3"/>
+    <!-- 云朵像素细节 / cloud pixel detail -->
+    <rect x="26" y="124" width="6" height="2" fill="${cloudColor}"/>
+    <rect x="98" y="124" width="6" height="2" fill="${cloudColor}"/>
 
-    <!-- 地面阴影 / ground shadow -->
-    <rect x="24" y="112" width="82" height="4" fill="rgba(0,0,0,0.1)"/>
+    <!-- 云朵阴影 / cloud shadow -->
+    <ellipse cx="65" cy="138" rx="50" ry="4" fill="rgba(0,0,0,0.06)"/>
 
-    <!-- 钻石方块建筑 / diamond block building -->
-    <rect x="28" y="60" width="74" height="52" fill="${diaColor}"/>
-    <!-- 高光(左上) / highlight (top-left) -->
-    <rect x="28" y="60" width="74" height="3" fill="${diaLight}"/>
-    <rect x="28" y="60" width="3" height="52" fill="${diaLight}" opacity="0.6"/>
-    <!-- 暗面(右下) / shadow (bottom-right) -->
-    <rect x="99" y="60" width="3" height="52" fill="${diaDark}"/>
-    <rect x="28" y="109" width="74" height="3" fill="${diaDark}"/>
+    <!-- ═══ 钻石方块塔楼 / Diamond block tower ═══ -->
+    <!-- 塔身主体 / tower body -->
+    <rect x="30" y="54" width="70" height="56" fill="${dia.mid}"/>
+    <!-- 上边高光 / top highlight -->
+    <rect x="30" y="54" width="70" height="2" fill="${dia.lightest}"/>
+    <!-- 左边高光 / left highlight -->
+    <rect x="30" y="54" width="2" height="56" fill="${dia.light}" opacity="0.6"/>
+    <!-- 右边暗 / right shadow -->
+    <rect x="98" y="54" width="2" height="56" fill="${dia.darkest}"/>
+    <!-- 下边暗 / bottom shadow -->
+    <rect x="30" y="108" width="70" height="2" fill="${dia.darkest}"/>
 
-    <!-- 尖顶 / pitched roof -->
-    <polygon points="22,62 65,30 108,62" fill="${diaDark}"/>
-    <polygon points="22,62 65,30 65,62" fill="${diaColor}" opacity="0.7"/>
+    <!-- 钻石纹理:像素高光斑点 / Diamond texture: pixel highlight specks -->
+    <rect x="36" y="60" width="3" height="3" fill="${dia.light}" opacity="0.4"/>
+    <rect x="50" y="70" width="2" height="2" fill="${dia.light}" opacity="0.3"/>
+    <rect x="72" y="64" width="3" height="3" fill="${dia.light}" opacity="0.35"/>
+    <rect x="84" y="80" width="2" height="2" fill="${dia.light}" opacity="0.3"/>
+    <rect x="42" y="92" width="3" height="3" fill="${dia.light}" opacity="0.25"/>
+    <rect x="78" y="98" width="2" height="2" fill="${dia.light}" opacity="0.3"/>
 
-    <!-- 方窗 / square windows -->
-    <rect x="38" y="72" width="14" height="12" fill="${winColor}" opacity="${winLit}"/>
-    <rect x="38" y="72" width="14" height="12" fill="none" stroke="${diaDark}" stroke-width="1.5"/>
-    <rect x="78" y="72" width="14" height="12" fill="${winColor}" opacity="${winLit}"/>
-    <rect x="78" y="72" width="14" height="12" fill="none" stroke="${diaDark}" stroke-width="1.5"/>
+    <!-- ═══ 尖塔顶(钻石锥) / Spire top (diamond cone) ═══ -->
+    <polygon points="30,56 65,22 100,56" fill="${dia.dark}"/>
+    <!-- 左面亮 / left face bright -->
+    <polygon points="30,56 65,22 65,56" fill="${dia.mid}"/>
+    <!-- 尖顶高光 / spire highlight -->
+    <polygon points="63,22 67,22 65,28" fill="${dia.light}"/>
 
-    <!-- 门 / door -->
-    <rect x="56" y="86" width="18" height="26" fill="${stoneDark}"/>
-    <rect x="56" y="86" width="18" height="2" fill="${diaDark}" opacity="0.5"/>
+    <!-- ═══ 发光窗户(红石灯风格) / Glowing windows (redstone lamp) ═══ -->
+    <!-- 左窗 / left window -->
+    <rect x="40" y="70" width="14" height="12" fill="${lapis}"/>
+    <rect x="42" y="72" width="10" height="8" fill="${online ? lampOn : lampOff}" opacity="${online ? 0.85 : 0.4}"/>
+    <rect x="42" y="72" width="4" height="1" fill="rgba(255,255,255,0.4)"/>
+    <!-- 右窗 / right window -->
+    <rect x="76" y="70" width="14" height="12" fill="${lapis}"/>
+    <rect x="78" y="72" width="10" height="8" fill="${online ? lampOn : lampOff}" opacity="${online ? 0.85 : 0.4}"/>
+    <rect x="78" y="72" width="4" height="1" fill="rgba(255,255,255,0.4)"/>
 
-    <!-- 烟囱 / chimney -->
-    <rect x="84" y="38" width="8" height="16" fill="${stoneDark}"/>
-    <rect x="82" y="36" width="12" height="4" fill="#555"/>
+    <!-- ═══ 门:圆石拱门 / Door: cobblestone arch ═══ -->
+    <rect x="54" y="84" width="22" height="26" fill="${MC_STONE.darker}"/>
+    <rect x="56" y="86" width="18" height="22" fill="${dia.edge}"/>
+    <!-- 门框圆石纹理 / door frame cobble texture -->
+    <rect x="55" y="85" width="2" height="24" fill="${MC_STONE.mid}" opacity="0.5"/>
+    <rect x="74" y="85" width="2" height="24" fill="${MC_STONE.mid}" opacity="0.5"/>
+
+    <!-- ═══ 塔顶旗杆 + 旗帜 / Flagpole + banner ═══ -->
+    <rect x="64" y="14" width="2" height="8" fill="#6a6a6a"/>
+    ${online ? `<rect x="66" y="15" width="8" height="5" fill="#5db340">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="2s" repeatCount="indefinite"/>
+    </rect>` : `<rect x="66" y="15" width="8" height="5" fill="#555" opacity="0.4"/>`}
+
+    <!-- ═══ 地面阴影 / Ground shadow ═══ -->
+    <rect x="28" y="108" width="74" height="3" fill="rgba(0,0,0,0.12)"/>
   </svg>`;
 }
 

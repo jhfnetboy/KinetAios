@@ -500,82 +500,148 @@
 }
 
 /* ── 小镇风格:我的世界 / Town style: Minecraft ──
-   当 #town-canvas 有 data-town-style="minecraft" 时:
-   零圆角 + 硬偏移阴影 + 像素纹理背景 + 草地地面。 */
+   #town-canvas[data-town-style="minecraft"]
+   零圆角 + 硬偏移阴影 + 像素纹理背景 + MC 草地天空。 */
+
+/* MC 天空: 日间蓝天 → 草地(70% 处硬切,像素感分界线) */
 #town-canvas[data-town-style="minecraft"] .town-sky {
   background: linear-gradient(to bottom,
     #78a7ff 0%,
-    #9ec5f0 40%,
-    #c0d8f0 70%,
-    #7ab84a 70%,
-    #5db340 100%);
+    #9ec5f0 35%,
+    #c0d8f0 65%,
+    #7ab84a 65%,
+    #6aa838 85%,
+    #5a9828 100%);
+  position: relative;
 }
-/* MC 天空:蓝天 → 草地分界线(70% 处硬切,像素感) */
-
-#town-canvas[data-town-style="minecraft"] .town-body {
+/* 草地像素纹理:重复的草尖方块 / grass blade pixel texture */
+#town-canvas[data-town-style="minecraft"] .town-sky::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 35%;
   background-image:
-    /* 石砖纹理叠加 / stone brick texture overlay */
-    repeating-linear-gradient(0deg,
-      transparent 0px,
-      transparent 31px,
-      rgba(0,0,0,0.04) 31px,
-      rgba(0,0,0,0.04) 32px),
     repeating-linear-gradient(90deg,
       transparent 0px,
-      transparent 31px,
-      rgba(0,0,0,0.04) 31px,
-      rgba(0,0,0,0.04) 32px);
+      transparent 7px,
+      rgba(154, 208, 106, 0.15) 7px,
+      rgba(154, 208, 106, 0.15) 9px,
+      transparent 9px,
+      transparent 16px),
+    repeating-linear-gradient(90deg,
+      transparent 0px,
+      transparent 15px,
+      rgba(100, 160, 50, 0.1) 15px,
+      rgba(100, 160, 50, 0.1) 17px);
+  pointer-events: none;
 }
 
-/* MC 风格的房子卡片:零圆角 + 硬偏移阴影 + bevel 边框 */
+/* MC 背景: 石砖纹理网格(32px)+ 暗色叠加 / cobblestone grid texture */
+#town-canvas[data-town-style="minecraft"] .town-body {
+  background-image:
+    repeating-linear-gradient(0deg,
+      transparent 0px,
+      transparent 15px,
+      rgba(0,0,0,0.06) 15px,
+      rgba(0,0,0,0.06) 16px),
+    repeating-linear-gradient(90deg,
+      transparent 0px,
+      transparent 15px,
+      rgba(0,0,0,0.06) 15px,
+      rgba(0,0,0,0.06) 16px);
+}
+
+/* MC 房子卡片: 像素方块边框 — 零圆角 + 3D bevel + 硬偏移阴影 */
 #town-canvas[data-town-style="minecraft"] .town-house {
   border-radius: 0;
-  border: 2px solid rgba(0,0,0,0.3);
-  border-top-color: rgba(255,255,255,0.12);
-  border-left-color: rgba(255,255,255,0.08);
-  box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
+  border: 3px solid rgba(58, 58, 58, 0.5);
+  border-top-color: rgba(160, 160, 160, 0.2);
+  border-left-color: rgba(120, 120, 120, 0.15);
+  box-shadow:
+    3px 3px 0 rgba(0, 0, 0, 0.22),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.04);
 }
 #town-canvas[data-town-style="minecraft"] .town-house:hover {
-  background: rgba(93,179,64,0.08);
-  box-shadow: 6px 6px 0 rgba(0,0,0,0.25);
+  background: rgba(93, 179, 64, 0.06);
+  box-shadow:
+    4px 4px 0 rgba(0, 0, 0, 0.28),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.06);
+  border-top-color: rgba(200, 200, 200, 0.25);
 }
 #town-canvas[data-town-style="minecraft"] .town-house:active {
   transform: translateY(2px);
-  box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.22);
 }
 
-/* MC 风格的房子 SVG:硬偏移阴影(不用 filter blur) */
+/* MC 房子 SVG: 像素硬投影(不用模糊) / pixel hard shadow */
 #town-canvas[data-town-style="minecraft"] .house-svg {
-  filter: drop-shadow(3px 3px 0 rgba(0,0,0,0.15));
+  filter: drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.12));
 }
 
-/* MC 风格的房子标题:像素硬阴影描边 */
+/* MC 房子标题: 像素描边硬阴影 / pixel outline hard shadow */
 #town-canvas[data-town-style="minecraft"] .house-roof-label {
-  text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,0.35),
+    2px 2px 0 rgba(0,0,0,0.2);
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
-/* MC 风格的村民:hover 不用圆角缩放,用硬偏移 */
+/* MC 村民: 像素抖动 hover / pixel bob hover */
+#town-canvas[data-town-style="minecraft"] .villager-wrap {
+  transition: transform 0.12s steps(2);
+}
 #town-canvas[data-town-style="minecraft"] .villager-wrap:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
 }
 
-/* MC 风格的按钮:零圆角 + bevel */
+/* MC 按钮: 零圆角 + 像素 bevel + 硬阴影 */
 #town-canvas[data-town-style="minecraft"] .house-actions button {
   border-radius: 0;
-  border: 2px solid rgba(0,0,0,0.3);
-  border-top-color: rgba(255,255,255,0.15);
-  border-left-color: rgba(255,255,255,0.1);
-  box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+  border: 2px solid rgba(58, 58, 58, 0.5);
+  border-top-color: rgba(160, 160, 160, 0.15);
+  border-left-color: rgba(120, 120, 120, 0.1);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
+  transition: transform 0.08s steps(2), box-shadow 0.08s steps(2);
+}
+#town-canvas[data-town-style="minecraft"] .house-actions button:hover {
+  border-top-color: rgba(200, 200, 200, 0.25);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.25);
 }
 #town-canvas[data-town-style="minecraft"] .house-actions button:active {
   transform: translateY(2px);
   box-shadow: 0 0 0 transparent;
 }
 
-/* MC 风格的空状态文字 */
+/* MC 空状态: 像素描边 / empty state pixel outline */
 #town-canvas[data-town-style="minecraft"] .town-empty {
-  text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,0.35),
+    2px 2px 0 rgba(0,0,0,0.15);
   font-weight: 700;
+}
+
+/* MC 远程节点卡片: 钻石方块边框 / diamond border for remote nodes */
+#town-canvas[data-town-style="minecraft"] .house-card[data-remote="true"] {
+  border-color: rgba(46, 184, 168, 0.3);
+}
+#town-canvas[data-town-style="minecraft"] .house-card[data-remote="true"]:hover {
+  border-color: rgba(94, 232, 216, 0.4);
+  box-shadow:
+    3px 3px 0 rgba(30, 132, 120, 0.25),
+    inset 1px 1px 0 rgba(94, 232, 216, 0.08);
+}
+
+/* MC 信息面板: 像素风 / info panel pixel style */
+#town-canvas[data-town-style="minecraft"] .town-panel {
+  border-radius: 0;
+  border: 3px solid rgba(58, 58, 58, 0.5);
+  border-top-color: rgba(160, 160, 160, 0.15);
+  border-left-color: rgba(120, 120, 120, 0.1);
+  box-shadow:
+    4px 4px 0 rgba(0, 0, 0, 0.22);
 }
 
 /* ── 响应式 / Responsive ── */
