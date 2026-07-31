@@ -2595,46 +2595,16 @@ button.sm { padding: 3px 8px; font-size: 11px; }
   background-color: var(--bg);
   background-image:
     /* 细网格 / fine grid */
-    linear-gradient(rgba(127,204,25,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(127,204,25,0.025) 1px, transparent 1px),
+    linear-gradient(rgba(127,204,25,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(127,204,25,0.06) 1px, transparent 1px),
     /* 粗网格 / coarse grid */
-    linear-gradient(rgba(127,204,25,0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(127,204,25,0.035) 1px, transparent 1px);
-  background-size: 20px 20px, 20px 20px, 80px 80px, 80px 80px;
+    linear-gradient(rgba(127,204,25,0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(127,204,25,0.12) 1px, transparent 1px);
+  background-size: 24px 24px, 24px 24px, 96px 96px, 96px 96px;
 }
 
-/* SEED: 聊天区四角十字准星 / Chat area corner reticles */
-[data-theme="seed"] #chat-view {
-  position: relative;
-}
-[data-theme="seed"] #chat-view::before,
-[data-theme="seed"] #chat-view::after {
-  content: '';
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  pointer-events: none;
-  z-index: 5;
-  border-color: rgba(127,204,25,0.25);
-  border-style: solid;
-  border-width: 0;
-}
-/* 左上角 / top-left (below chat-head) */
-[data-theme="seed"] #chat-view::before {
-  top: 48px;
-  left: 0;
-  border-top-width: 1.5px;
-  border-left-width: 1.5px;
-}
-/* 右下角 / bottom-right */
-[data-theme="seed"] #chat-view::after {
-  bottom: 0;
-  right: 0;
-  border-bottom-width: 1.5px;
-  border-right-width: 1.5px;
-}
-
-/* SEED: 右上 + 左下角准星(经 #chat-content) / Top-right + bottom-left via chat-content */
+/* SEED: 聊天区四角十字准星 / Chat area corner reticles
+   #chat-view 有 overflow:hidden,伪元素需在内部容器上 / pseudo-elements on inner containers */
 [data-theme="seed"] #chat-content {
   position: relative;
 }
@@ -2642,25 +2612,56 @@ button.sm { padding: 3px 8px; font-size: 11px; }
 [data-theme="seed"] #chat-content::after {
   content: '';
   position: absolute;
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   pointer-events: none;
-  z-index: 5;
-  border-color: rgba(127,204,25,0.25);
+  z-index: 8;
+  border-color: rgba(127,204,25,0.40);
   border-style: solid;
   border-width: 0;
 }
+/* 右上角 / top-right */
 [data-theme="seed"] #chat-content::before {
   top: 0;
   right: 0;
-  border-top-width: 1.5px;
-  border-right-width: 1.5px;
+  border-top-width: 2px;
+  border-right-width: 2px;
 }
+/* 左下角 / bottom-left */
 [data-theme="seed"] #chat-content::after {
   bottom: 0;
   left: 0;
-  border-bottom-width: 1.5px;
-  border-left-width: 1.5px;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+}
+
+/* SEED: #turns 上的左上 + 右下准星 / Top-left + bottom-right reticles on #turns */
+[data-theme="seed"] #turns {
+  position: relative;
+}
+[data-theme="seed"] #turns::before,
+[data-theme="seed"] #turns::after {
+  content: '';
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  pointer-events: none;
+  z-index: 0;  /* 在消息下方 / behind messages */
+  border-color: rgba(127,204,25,0.40);
+  border-style: solid;
+  border-width: 0;
+}
+[data-theme="seed"] #turns::before {
+  top: 0;
+  left: 0;
+  border-top-width: 2px;
+  border-left-width: 2px;
+}
+[data-theme="seed"] #turns::after {
+  bottom: 0;
+  right: 0;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
 }
 
 /* SEED: 聊天头 — 军事 HUD 条 / Chat header military HUD bar */
@@ -2681,8 +2682,8 @@ button.sm { padding: 3px 8px; font-size: 11px; }
 [data-theme="seed"] .msg .bubble {
   border: 1px solid var(--seed-metal);
   box-shadow:
-    0 0 0 1px rgba(127,204,25,0.03),
-    inset 0 1px 0 rgba(255,255,255,0.02),
+    0 0 0 1px rgba(127,204,25,0.06),
+    inset 0 1px 0 rgba(255,255,255,0.03),
     var(--shadow-sm);
 }
 
@@ -2690,11 +2691,12 @@ button.sm { padding: 3px 8px; font-size: 11px; }
 [data-theme="seed"] .msg.ai .avatar {
   background: var(--bg-elev);
   border: 1px solid var(--seed-metal);
-  box-shadow: 0 0 6px rgba(127,204,25,0.10), inset 0 0 4px rgba(127,204,25,0.04);
+  box-shadow: 0 0 8px rgba(127,204,25,0.20), inset 0 0 6px rgba(127,204,25,0.08);
 }
 [data-theme="seed"] .msg.user .avatar {
-  background: linear-gradient(135deg, rgba(212,64,74,0.20), rgba(180,40,50,0.15));
-  border: 1px solid rgba(212,64,74,0.30);
+  background: linear-gradient(135deg, rgba(212,64,74,0.25), rgba(180,40,50,0.18));
+  border: 1px solid rgba(212,64,74,0.40);
+  box-shadow: 0 0 6px rgba(212,64,74,0.15);
 }
 
 /* SEED: composer — HUD 输入框 / Composer = HUD input */
