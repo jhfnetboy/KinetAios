@@ -25,7 +25,7 @@ import { allTools } from './tools';
 import { getBrand } from './brand';
 import { binEnv } from './engines';
 import { TaskManager, type TaskManagerEmitter } from './TaskManager';
-import type { AgentEvent, AppSettings, BudgetAlert, ConfigSnapshot, Conversation, CustomTool, EngineKind, GitChange, GitCommit, GitDiffResult, GitSnapshot, Pipeline, PromptTemplate, RuleConfig, Turn, ChatMsg } from '../shared/types';
+import type { AgentEvent, AppSettings, BudgetAlert, ConfigSnapshot, Conversation, CustomTool, EngineKind, GitActionKind, GitActionResult, GitChange, GitCommit, GitDiffResult, GitSnapshot, Pipeline, PromptTemplate, RuleConfig, Turn, ChatMsg } from '../shared/types';
 
 const execFileAsync = promisify(execFile);
 
@@ -375,6 +375,85 @@ async function gitDiffAsync(cwd: string, opts: { file?: string; hash?: string; s
     else args = ['diff', 'HEAD'];
     const diff = await runGit(args, cwd);
     return { ok: true, diff };
+  } catch (e) {
+    return { ok: false, error: (e as Error)?.message ?? String(e) };
+  }
+}
+
+// ── Git 操作:stage / unstage / commit / pull / push / fetch / stash / checkout / discard ──
+// 所有写操作都走这里,执行后 renderer 自动刷新 snapshot。
+// 安全:file/branch/message 走 safeRef 校验,防 argument injection。
+async function gitActionAsync(cwd: string, action: GitActionKind, opts?: { message?: string; file?: string; branch?: string }): Promise<GitActionResult> {
+  try {
+    const safeRef = (s: string): boolean => /^[\w./~^@{}\[\]:\-]+$/.test(s);
+    let args: string[];
+    let successMsg: string;
+    switch (action) {
+      case 'stageAll':
+        args = ['add', '-A'];
+        successMsg = t(getSettings().lang, 'git.actStageAllOk');
+        break;
+      case 'unstageAll':
+        args = ['reset', 'HEAD', '--'];
+        successMsg = t(getSettings().lang, 'git.actUnstageAllOk');
+        break;
+      case 'stageFile':
+        if (!opts?.file || !safeRef(opts.file)) return { ok: false, error: `不安全的文件路径: "${opts?.file}"` };
+        args = ['add', '--', opts.file];
+        successMsg = t(getSettings().lang, 'git.actStageOk');
+        break;
+      case 'unstageFile':
+        if (!opts?.file || !safeRef(opts.file)) return { ok: false, error: `不安全的文件路径: "${opts?.file}"` };
+        args = ['reset', 'HEAD', '--', opts.file];
+        successMsg = t(getSettings().lang, 'git.actUnstageOk');
+        break;
+      case 'commit':
+        if (!opts?.message?.trim()) return { ok: false, error: t(getSettings().lang, 'git.actCommitNoMsg') };
+        args = ['commit', '-m', opts.message];
+        successMsg = t(getSettings().lang, 'git.actCommitOk');
+        break;
+      case 'amend':
+        args = ['commit', '--amend', '--no-edit'];
+        successMsg = t(getSettings().lang, 'git.actAmendOk');
+        break;
+      case 'pull':
+        args = ['pull', '--ff-only'];
+        successMsg = t(getSettings().lang, 'git.actPullOk');
+        break;
+      case 'push':
+        args = ['push'];
+        successMsg = t(getSettings().lang, 'git.actPushOk');
+        break;
+      case 'fetch':
+        args = ['fetch', '--all', '--prune'];
+        successMsg = t(getSettings().lang, 'git.actFetchOk');
+        break;
+      case 'stash':
+        args = ['stash', 'push', '-u'];
+        successMsg = t(getSettings().lang, 'git.actStashOk');
+        break;
+      case 'stashPop':
+        args = ['stash', 'pop'];
+        successMsg = t(getSettings().lang, 'git.actStashPopOk');
+        break;
+      case 'checkout':
+        if (!opts?.branch || !safeRef(opts.branch)) return { ok: false, error: `不安全的分支名: "${opts?.branch}"` };
+        args = ['checkout', opts.branch];
+        successMsg = t(getSettings().lang, 'git.actCheckoutOk');
+        break;
+      case 'discard':
+        // 危险:git checkout -- . + git clean -fd(只丢弃未跟踪+未暂存,不影响已暂存)
+        args = ['checkout', '--', '.'];
+        await runGit(args, cwd);
+        await runGit(['clean', '-fd'], cwd);
+        return { ok: true, message: t(getSettings().lang, 'git.actDiscardOk') };
+      default:
+        return { ok: false, error: `未知操作: ${action}` };
+    }
+    const stdout = await runGit(args, cwd);
+    // pull/push/fetch 的输出有意义,截取尾部给用户看。
+    const tail = stdout.trim().split('\n').slice(-3).join('\n');
+    return { ok: true, message: successMsg + (tail ? `\n${tail}` : '') };
   } catch (e) {
     return { ok: false, error: (e as Error)?.message ?? String(e) };
   }
@@ -839,6 +918,9 @@ function registerIpc(): void {
   ipcMain.handle('git-snapshot', (_e, cwd: string) => gitSnapshotAsync(cwd));
   ipcMain.handle('git-diff', (_e, cwd: string, opts: { file?: string; hash?: string; staged?: boolean }) =>
     gitDiffAsync(cwd, opts),
+  );
+  ipcMain.handle('git-action', (_e, cwd: string, action: GitActionKind, opts?: { message?: string; file?: string; branch?: string }) =>
+    gitActionAsync(cwd, action, opts),
   );
   // KINET.md 读写:rules tab 用。固定读 cwd/KINET.md,不接受相对路径(避免越界)。
   ipcMain.handle('read-rules', (_e, cwd: string) => {

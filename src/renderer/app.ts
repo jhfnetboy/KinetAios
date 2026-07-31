@@ -52,9 +52,10 @@ let filesController: FilesPaneController | null = null; // 「文件」tab 懒�
 let activeTab: 'chat' | 'files' | 'git' | 'rules' | 'preview' = 'chat';
 // git tab 状态:最近一次 snapshot + 当前右侧视图(history 默认 / 点文件或提交切到 diff)。
 // view.contentHTML 是已转义 + 按行包好 .d-add/.d-del/.d-hunk 的安全 HTML。
-let gitState: { snapshot?: GitSnapshot; view: { kind: 'history' } | { kind: 'diff'; title: string; contentHTML: string }; lastCwd: string } = {
+let gitState: { snapshot?: GitSnapshot; view: { kind: 'history' } | { kind: 'diff'; title: string; contentHTML: string }; lastCwd: string; busy: boolean } = {
   view: { kind: 'history' },
   lastCwd: '',
+  busy: false,
 };
 // rules tab:工作目录下的 KINET.md。rulesCwd 跟踪当前加载的 cwd,切会话且 cwd 变了就重载。
 let rulesCwd = '';
@@ -516,7 +517,9 @@ function renderGit(): void {
     if (!items?.length) return '';
     const rows = items.map((c) => {
       const suf = gitCodeSuffix(c.code);
-      return `<div class="gc-row" data-path="${esc(c.path)}" data-staged="${c.staged ? '1' : '0'}"><span class="gc-code ${esc(suf)}">${esc(c.code)}</span><span class="gc-label">${esc(tr('git.stat' + suf))}</span><span class="gc-path">${esc(c.path)}</span></div>`;
+      const actIcon = c.staged ? '−' : '+';
+      const actTitle = c.staged ? tr('git.actUnstageOk') : tr('git.actStageOk');
+      return `<div class="gc-row" data-path="${esc(c.path)}" data-staged="${c.staged ? '1' : '0'}"><span class="gc-code ${esc(suf)}">${esc(c.code)}</span><span class="gc-label">${esc(tr('git.stat' + suf))}</span><span class="gc-path">${esc(c.path)}</span><button class="gc-act" data-path="${esc(c.path)}" data-staged="${c.staged ? '1' : '0'}" title="${esc(actTitle)}">${actIcon}</button></div>`;
     }).join('');
     return `<div class="gc-group-label">${esc(label)} <span class="gc-group-count">${items.length}</span></div>${rows}`;
   };
@@ -529,6 +532,15 @@ function renderGit(): void {
       renderGroup(tr('git.unstaged'), unstaged);
     changesEl.querySelectorAll<HTMLElement>('.gc-row').forEach((row) => {
       row.onclick = () => void showGitDiff({ file: row.dataset.path!, staged: row.dataset.staged === '1' });
+    });
+    // 单文件 stage/unstage 快捷按钮 / per-file stage/unstage shortcut
+    changesEl.querySelectorAll<HTMLButtonElement>('.gc-act').forEach((btn) => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const file = btn.dataset.path!;
+        const wasStaged = btn.dataset.staged === '1';
+        void doGitAction(wasStaged ? 'unstageFile' : 'stageFile', { file });
+      };
     });
     const allBtn = document.getElementById('gc-all-diff');
     if (allBtn) allBtn.onclick = () => void showGitDiff({});
@@ -557,6 +569,95 @@ function renderGit(): void {
       renderGit();
     };
   }
+}
+
+// ── Git 操作:执行 git action → toast 反馈 → 自动刷新 snapshot ──
+let gitToastTimer: ReturnType<typeof setTimeout> | null = null;
+function gitToast(msg: string, ok: boolean): void {
+  let el = document.querySelector<HTMLDivElement>('.git-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'git-toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.className = `git-toast ${ok ? 'ok' : 'err'} show`;
+  if (gitToastTimer) clearTimeout(gitToastTimer);
+  gitToastTimer = setTimeout(() => { el!.classList.remove('show'); }, ok ? 2500 : 5000);
+}
+
+function setGitActionsDisabled(disabled: boolean): void {
+  document.querySelectorAll<HTMLButtonElement>('.gh-btn').forEach((b) => { b.disabled = disabled; });
+}
+
+async function doGitAction(action: import('../shared/types').GitActionKind, opts?: { message?: string; file?: string; branch?: string }, skipConfirm?: boolean): Promise<void> {
+  const cwd = selectedId ? convs.get(selectedId)?.cwd ?? '' : '';
+  if (!cwd) return;
+  // 危险操作需二次确认 / Dangerous actions need confirmation
+  if (!skipConfirm && (action === 'discard')) {
+    if (!confirm(tr('git.actConfirmDiscard'))) return;
+  }
+  if (!skipConfirm && (action === 'stashPop')) {
+    if (!confirm(tr('git.actConfirmStashPop'))) return;
+  }
+  gitState.busy = true;
+  setGitActionsDisabled(true);
+  gitToast(tr('git.actRunning'), true);
+  const r = await api.gitAction(cwd, action, opts);
+  gitState.busy = false;
+  setGitActionsDisabled(false);
+  if (r.ok) {
+    gitToast(r.message ?? '✓', true);
+    void refreshGit(cwd);
+  } else {
+    gitToast(r.error ?? '✗', false);
+  }
+}
+
+// commit 对话框:弹出输入框让用户输入提交信息 / commit dialog: prompt for commit message
+function showCommitDialog(): void {
+  let overlay = document.querySelector<HTMLDivElement>('#git-commit-overlay');
+  if (overlay) { overlay.classList.add('show'); return; }
+  overlay = document.createElement('div');
+  overlay.id = 'git-commit-overlay';
+  overlay.className = 'git-dialog-overlay';
+  overlay.innerHTML = `
+    <div class="git-dialog">
+      <div class="git-dialog-title">${esc(tr('git.actCommitMsg'))}</div>
+      <textarea id="git-commit-input" placeholder="${esc(tr('git.actCommitPlaceholder'))}" rows="3" autofocus></textarea>
+      <div class="git-dialog-actions">
+        <button class="gd-cancel">${esc(tr('git.actCancel'))}</button>
+        <button class="gd-ok" disabled>${esc(tr('git.actConfirm'))}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const ta = overlay.querySelector<HTMLTextAreaElement>('#git-commit-input')!;
+  const okBtn = overlay.querySelector<HTMLButtonElement>('.gd-ok')!;
+  const cancelBtn = overlay.querySelector<HTMLButtonElement>('.gd-cancel')!;
+  // 输入非空才启用确定按钮 / Enable OK only when message is non-empty
+  ta.addEventListener('input', () => { okBtn.disabled = !ta.value.trim(); });
+  const close = () => { overlay!.classList.remove('show'); ta.value = ''; okBtn.disabled = true; };
+  cancelBtn.onclick = close;
+  // 点击遮罩关闭 / Click backdrop to close
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  // Enter(无 Shift)直接提交 / Enter (no Shift) to submit
+  ta.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!okBtn.disabled) okBtn.click();
+    }
+  });
+  okBtn.onclick = async () => {
+    const msg = ta.value.trim();
+    if (!msg) return;
+    close();
+    await doGitAction('commit', { message: msg });
+  };
+  // 延迟 focus 等 DOM 渲染 / Delay focus to wait for DOM
+  requestAnimationFrame(() => {
+    overlay!.classList.add('show');
+    ta.focus();
+  });
 }
 
 async function showGitDiff(opts: { file?: string; hash?: string; staged?: boolean }): Promise<void> {
@@ -2204,6 +2305,16 @@ function closeMoreMenu() { document.getElementById('sb-more-menu')?.classList.re
     const cwd = selectedId ? convs.get(selectedId)?.cwd ?? '' : '';
     if (cwd) void refreshGit(cwd);
   };
+  // git 操作快捷按钮 / git action shortcut buttons
+  document.getElementById('gh-stage-all')!.onclick = () => void doGitAction('stageAll');
+  document.getElementById('gh-unstage-all')!.onclick = () => void doGitAction('unstageAll');
+  document.getElementById('gh-commit')!.onclick = () => showCommitDialog();
+  document.getElementById('gh-pull')!.onclick = () => void doGitAction('pull');
+  document.getElementById('gh-push')!.onclick = () => void doGitAction('push');
+  document.getElementById('gh-fetch')!.onclick = () => void doGitAction('fetch');
+  document.getElementById('gh-stash')!.onclick = () => void doGitAction('stash');
+  document.getElementById('gh-stash-pop')!.onclick = () => void doGitAction('stashPop');
+  document.getElementById('gh-discard')!.onclick = () => void doGitAction('discard');
   document.getElementById('tab-rules')!.onclick = () => showTab('rules');
   // ── Artifact 预览 tab + 控制按钮 ──
   document.getElementById('tab-preview')!.onclick = () => openPreviewPane();

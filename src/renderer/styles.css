@@ -805,6 +805,39 @@ a { color: var(--accent); }
 .git-head { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
 .git-branch { font-size: 12.5px; color: var(--text-dim); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .git-spacer { flex: 1; }
+
+/* git 操作按钮工具栏 / git action button toolbar */
+.git-actions { display: flex; align-items: center; gap: 2px; }
+.gh-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; border-radius: 6px; background: transparent; color: var(--text-dim); cursor: pointer; transition: all 0.15s; }
+.gh-btn:hover { background: var(--bg-elev); color: var(--accent); }
+.gh-btn:active { transform: scale(0.92); }
+.gh-btn.gh-danger:hover { color: #dc5050; }
+.gh-btn[disabled] { opacity: 0.35; cursor: not-allowed; }
+.gh-btn[disabled]:hover { background: transparent; color: var(--text-dim); }
+.gh-sep { width: 1px; height: 16px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+
+/* git commit 对话框 / git commit dialog */
+.git-dialog-overlay { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.git-dialog-overlay.show { opacity: 1; pointer-events: auto; }
+.git-dialog { width: 440px; max-width: 90vw; padding: 20px; border-radius: 12px; background: var(--bg-card, #1e1e2e); border: 1px solid var(--border); box-shadow: 0 12px 40px rgba(0,0,0,0.5); transform: scale(0.95); transition: transform 0.2s; }
+.git-dialog-overlay.show .git-dialog { transform: scale(1); }
+.git-dialog-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+.git-dialog input, .git-dialog textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 13px; font-family: inherit; outline: none; resize: vertical; }
+.git-dialog input:focus, .git-dialog textarea:focus { border-color: var(--accent); }
+.git-dialog textarea { min-height: 60px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+.git-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.git-dialog-actions button { padding: 6px 16px; border-radius: 8px; font-size: 12.5px; cursor: pointer; border: 1px solid var(--border); }
+.git-dialog-actions .gd-cancel { background: transparent; color: var(--text-dim); }
+.git-dialog-actions .gd-cancel:hover { background: var(--bg-elev); }
+.git-dialog-actions .gd-ok { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+.git-dialog-actions .gd-ok:hover { opacity: 0.85; }
+.git-dialog-actions .gd-ok[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+/* git 操作状态 toast / git action status toast */
+.git-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px); z-index: 10000; padding: 10px 20px; border-radius: 10px; font-size: 12.5px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); opacity: 0; transition: all 0.3s; pointer-events: none; max-width: 480px; }
+.git-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.git-toast.ok { background: rgba(80,200,120,0.95); color: #fff; }
+.git-toast.err { background: rgba(220,80,80,0.95); color: #fff; }
 .git-body { flex: 1; display: grid; grid-template-columns: 38% 62%; min-height: 0; }
 .git-col { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--border); }
 .git-col:last-child { border-right: none; }
@@ -822,6 +855,12 @@ a { color: var(--accent); }
 .gc-code.U { background: rgba(150,150,160,.18); color: var(--text-dim); }
 .gc-label { font-size: 11px; color: var(--text-dim); }
 .gc-path { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+
+/* 单文件 stage/unstage 快捷按钮 / per-file stage/unstage quick button */
+.gc-row { position: relative; }
+.gc-act { display: none; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; border: none; border-radius: 4px; background: var(--bg-elev); color: var(--accent); font-size: 14px; font-weight: 700; line-height: 1; cursor: pointer; align-items: center; justify-content: center; }
+.gc-row:hover .gc-act { display: flex; }
+.gc-act:hover { background: var(--accent); color: #fff; }
 
 .gl-row { display: grid; grid-template-columns: 64px 70px 1fr 80px; gap: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; align-items: baseline; }
 .gl-row:hover { background: var(--bg-elev); }

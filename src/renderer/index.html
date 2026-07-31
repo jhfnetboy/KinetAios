@@ -115,6 +115,19 @@
           <div class="git-head">
             <span class="git-branch" id="git-branch"></span>
             <span class="git-spacer"></span>
+            <div class="git-actions" id="git-actions">
+              <button class="gh-btn" id="gh-stage-all" data-i18n-title="git.actStageAll" title="全部暂存"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 7l10 5 10-5"/></svg></button>
+              <button class="gh-btn" id="gh-unstage-all" data-i18n-title="git.actUnstageAll" title="全部取消暂存"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 17l10-5 10 5"/></svg></button>
+              <button class="gh-btn" id="gh-commit" data-i18n-title="git.actCommit" title="提交"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M3 12h6M15 12h6"/></svg></button>
+              <span class="gh-sep"></span>
+              <button class="gh-btn" id="gh-pull" data-i18n-title="git.actPull" title="拉取"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></svg></button>
+              <button class="gh-btn" id="gh-push" data-i18n-title="git.actPush" title="推送"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V8M6 14l6-6 6 6M4 4h16"/></svg></button>
+              <button class="gh-btn" id="gh-fetch" data-i18n-title="git.actFetch" title="获取"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M20.5 9A9 9 0 005.6 5.6L1 10M3.5 15a9 9 0 0014.9 3.4L23 14"/></svg></button>
+              <span class="gh-sep"></span>
+              <button class="gh-btn" id="gh-stash" data-i18n-title="git.actStash" title="贮藏"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.7l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.7l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg></button>
+              <button class="gh-btn" id="gh-stash-pop" data-i18n-title="git.actStashPop" title="弹出贮藏"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg></button>
+              <button class="gh-btn gh-danger" id="gh-discard" data-i18n-title="git.actDiscard" title="丢弃更改"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+            </div>
             <button class="ghost" id="btn-git-refresh" data-i18n-title="git.refresh" title="刷新"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M20.5 9A9 9 0 005.6 5.6L1 10M3.5 15a9 9 0 0014.9 3.4L23 14"/></svg></button>
           </div>
           <div class="git-body">

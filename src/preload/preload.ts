@@ -41,6 +41,7 @@ const api: KinetAPI = {
   listDir: (absPath) => ipcRenderer.invoke('list-dir', absPath),
   gitSnapshot: (cwd) => ipcRenderer.invoke('git-snapshot', cwd),
   gitDiff: (cwd: string, opts: { file?: string; hash?: string; staged?: boolean }) => ipcRenderer.invoke('git-diff', cwd, opts),
+  gitAction: (cwd: string, action: import('../shared/types').GitActionKind, opts?: { message?: string; file?: string; branch?: string }) => ipcRenderer.invoke('git-action', cwd, action, opts),
   readRules: (cwd) => ipcRenderer.invoke('read-rules', cwd),
   writeRules: (cwd, content) => ipcRenderer.invoke('write-rules', cwd, content),
   readContext: (cwd) => ipcRenderer.invoke('read-context', cwd),

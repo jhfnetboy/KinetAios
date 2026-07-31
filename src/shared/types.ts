@@ -305,6 +305,15 @@ export type GitSnapshot = {
 };
 export type GitDiffResult = { ok: boolean; diff?: string; error?: string };
 
+// Git 操作（stage/unstage/commit/pull/push/fetch/stash/branch 等）。
+// ponytail: commit message 由 renderer 传入（弹输入框），main 不做 UI。
+export type GitActionKind =
+  | 'stageAll' | 'unstageAll' | 'stageFile' | 'unstageFile'
+  | 'commit' | 'amend' | 'pull' | 'push' | 'fetch'
+  | 'stash' | 'stashPop' | 'checkout' | 'discard';
+
+export type GitActionResult = { ok: boolean; message?: string; error?: string };
+
 // The API the preload exposes to the renderer via contextBridge (window.kinet).
 export interface KinetAPI {
   getConversations(): Promise<Conversation[]>;
@@ -357,6 +366,7 @@ export interface KinetAPI {
   listDir(absPath: string): Promise<{ ok: boolean; entries?: DirEntry[]; error?: string }>;
   gitSnapshot(cwd: string): Promise<GitSnapshot>;
   gitDiff(cwd: string, opts: { file?: string; hash?: string; staged?: boolean }): Promise<GitDiffResult>;
+  gitAction(cwd: string, action: GitActionKind, opts?: { message?: string; file?: string; branch?: string }): Promise<GitActionResult>;
   readRules(cwd: string): Promise<{ ok: boolean; content?: string; error?: string }>;
   writeRules(cwd: string, content: string): Promise<{ ok: boolean; error?: string }>;
   readContext(cwd: string): Promise<{ ok: boolean; content?: string; error?: string }>;
