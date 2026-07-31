@@ -995,9 +995,8 @@ a { color: var(--accent); }
 .s-tab { padding: 8px 16px; font-size: 13px; border: none; background: none; color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent; transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); }
 .s-tab:hover { color: var(--text); }
 .s-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-/* 设置页 tab 面板切换:纯 opacity transition,无 transform 避免层叠上下文副作用。
-   display:none→block 时 opacity 从初始值(0)过渡到 1(JS 控制)。 */
-.s-tab-panel { opacity: 1; transition: opacity var(--dur-fast) var(--ease-out); }
+/* 设置页 tab 面板:纯 display 切换,无动画(避免 Chromium display_lock 崩溃)。 */
+.s-tab-panel { }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }

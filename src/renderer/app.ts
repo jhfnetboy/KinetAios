@@ -1345,17 +1345,7 @@ async function showSettings() {
       root.querySelectorAll('.s-tab').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       root.querySelectorAll('.s-tab-panel').forEach((p) => {
-        const el = p as HTMLElement;
-        if (el.dataset.panel === target) {
-          el.style.display = '';
-          // 强制重排后移除 fade-out 类,触发 transition 淡入
-          // Force reflow to restart transition
-          void el.offsetWidth;
-          el.style.opacity = '1';
-        } else {
-          el.style.opacity = '0';
-          el.style.display = 'none';
-        }
+        (p as HTMLElement).style.display = (p as HTMLElement).dataset.panel === target ? '' : 'none';
       });
     };
   });
