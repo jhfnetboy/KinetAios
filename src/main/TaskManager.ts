@@ -1,7 +1,7 @@
 // Conversation manager. Port of Swift TaskManager (engine dispatch + persistence + memory).
 // Three engines now (Direct / Claude Code / Codex); each implements the Engine interface.
 import fs from 'node:fs';
-import type { AgentEvent, ChatMsg, Conversation, EngineKind } from '../shared/types';
+import type { AgentEvent, ChatMsg, Conversation, ContextMode, EngineKind } from '../shared/types';
 import { applyEvent, newTurn, rid } from '../shared/types';
 import * as store from './store';
 import { getSettings, snapshot } from './settings';
@@ -101,11 +101,11 @@ export class TaskManager {
     this.emit.emitConversation(conv);
   }
 
-  // 高保真模式开关 —— 开启后 Direct 引擎不截断 tool result + 更大上下文预算(适合交叉分析)。
-  setHighFidelity(id: string, on: boolean): void {
+  // 上下文模式切换 —— standard(默认) / hifi(不截断+大预算)。以后可扩展更多模式。
+  setContextMode(id: string, mode: ContextMode): void {
     const conv = this.convs.get(id);
     if (!conv) return;
-    conv.highFidelity = on;
+    conv.contextMode = mode;
     store.saveConversation(conv);
     this.emit.emitConversation(conv);
   }

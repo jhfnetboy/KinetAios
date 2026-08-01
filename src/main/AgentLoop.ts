@@ -1,6 +1,6 @@
 // ReAct loop: model ↔ tools until the model answers without a tool_call, or max turns hit.
 // Verbatim port of Swift AgentLoop.run. DirectEngine's trim-history logic lives here too.
-import type { AgentEvent, ChatMsg, ConfigSnapshot, ContentPart } from '../shared/types';
+import type { AgentEvent, ChatMsg, ConfigSnapshot, ContentPart, ContextMode } from '../shared/types';
 import { priceUSD, type Completion, type Provider, type ToolDef } from './glm';
 import { toolDef, type Tool, type ToolCtx } from './tools';
 import { t } from '../shared/i18n';
@@ -20,8 +20,8 @@ export interface RunOpts {
   ctx: ToolCtx;
   signal: AbortSignal;
   maxTurns?: number;
-  // 高保真模式:不截断 tool result + 更大上下文预算(适合多数据源交叉分析,代价是更多 token)。
-  highFidelity?: boolean;
+  // 上下文模式:hifi 时不截断 tool result + 更大上下文预算(适合多数据源交叉分析,代价是更多 token)。
+  contextMode?: ContextMode;
   onEvent: (e: AgentEvent) => void;
 }
 
@@ -75,7 +75,7 @@ export async function runAgentLoop(opts: RunOpts): Promise<ChatMsg[]> {
       if (!retriedAfterShrink && isContextTooLong(e)) {
         retriedAfterShrink = true;
         const beforeMsgs = messages;
-        messages = [{ role: 'system', content: systemPrompt }, ...memMsg, ...trimHistoryToTokenBudget(dropTransient(messages), opts.highFidelity ? 60_000 : 15_000, snapshot.apiProtocol)];
+        messages = [{ role: 'system', content: systemPrompt }, ...memMsg, ...trimHistoryToTokenBudget(dropTransient(messages), opts.contextMode === 'hifi' ? 60_000 : 15_000, snapshot.apiProtocol)];
         // 发压缩事件:让用户知道上下文超长被自动裁剪了
         const beforeTokens = estTokenCount(beforeMsgs);
         const afterTokens = estTokenCount(messages);
@@ -110,7 +110,7 @@ export async function runAgentLoop(opts: RunOpts): Promise<ChatMsg[]> {
     }
 
     // 工具执行:同轮里只读工具(readOnly)并发,写工具串行。结果按原序回填(tool_call_id 配对)。
-    messages.push(...(await runToolBatch(completion.toolCalls, tools, ctx, signal, onEvent, opts.highFidelity)));
+    messages.push(...(await runToolBatch(completion.toolCalls, tools, ctx, signal, onEvent, opts.contextMode)));
     // abort 在工具执行中触发 → runToolBatch 补了 [已停止] 后正常返回,
     // 但不应继续下一轮 LLM 调用 → 在这里截断,确保 messages 以合法 assistant 结尾。
     if (signal.aborted) return finalizeAbortedMessages(messages);
@@ -515,7 +515,7 @@ async function runToolBatch(
   ctx: ToolCtx,
   signal: AbortSignal,
   onEvent: (e: AgentEvent) => void,
-  highFidelity = false,
+  contextMode = 'standard' as ContextMode,
 ): Promise<ChatMsg[]> {
   const results: ChatMsg[] = [];
   // 执行前发个 status → 聊天框 streaming 区显示「执行 X, Y…」,让用户知道在跑工具(不只三点)。
@@ -545,7 +545,7 @@ async function runToolBatch(
           const result = await execute(c, tools, ctx);
           const dur = Date.now() - t0;
           onEvent({ type: 'tool', name: c.name, args: c.arguments, result, durationMs: dur }); // UI 拿原文(可点开看全)
-          return { c, result: highFidelity ? result : truncateForModel(result), dur }; // 模型拿截断版(高保真模式不截断)
+          return { c, result: contextMode === 'hifi' ? result : truncateForModel(result), dur }; // 模型拿截断版(hifi 模式不截断)
         }),
       );
       for (const { c, result } of outs) results.push({ role: 'tool', tool_call_id: c.id, content: result });
@@ -555,7 +555,7 @@ async function runToolBatch(
       const result = signal.aborted ? '[已停止]' : await execute(call, tools, ctx);
       const dur = Date.now() - t0;
       onEvent({ type: 'tool', name: call.name, args: call.arguments, result, durationMs: dur });
-      results.push({ role: 'tool', tool_call_id: call.id, content: highFidelity ? result : truncateForModel(result) });
+      results.push({ role: 'tool', tool_call_id: call.id, content: contextMode === 'hifi' ? result : truncateForModel(result) });
       i++;
     }
   }

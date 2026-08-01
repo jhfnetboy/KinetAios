@@ -1,8 +1,8 @@
 // Dashboard renderer. Vanilla TS — no framework. Holds a local copy of conversations,
 // applies streaming events, re-renders the changed bits. Settings + shell-confirm modal inline.
-import { applyEvent, ENGINE_LABELS } from '../shared/types';
+import { applyEvent, ENGINE_LABELS, CONTEXT_MODES } from '../shared/types';
 import { t, LANGS, type Lang } from '../shared/i18n';
-import type { AppSettings, ChatMsg, Conversation, EngineKind, GitSnapshot, KinetAPI, PipelineStage, SkillInfo } from '../shared/types';
+import type { AppSettings, ChatMsg, Conversation, ContextMode, EngineKind, GitSnapshot, KinetAPI, PipelineStage, SkillInfo } from '../shared/types';
 import { renderMarkdown as md } from './markdown';
 import { mountFilesPane, type FilesPaneController } from './files-pane';
 import { CodeEditor } from './code-editor';
@@ -891,6 +891,8 @@ function renderHead(conv: Conversation | undefined) {
     cwd.value = '';
     model.value = '';
     model.style.display = 'none';
+    const cs0 = document.getElementById('ctx-mode-select');
+    if (cs0) cs0.style.display = 'none';
     eng.value = 'direct';
     stat.textContent = '';
     status.textContent = '';
@@ -932,11 +934,12 @@ function renderHead(conv: Conversation | undefined) {
       goalBar.style.display = 'none';
     }
   }
-  // 高保真模式按钮:激活态高亮 + 仅 Direct 引擎显示(CLI 引擎有自己的上下文管理)。
-  const hifiBtn = document.getElementById('btn-hifi');
-  if (hifiBtn) {
-    hifiBtn.classList.toggle('active', !!conv.highFidelity);
-    hifiBtn.style.display = conv.engine === 'direct' ? '' : 'none';
+  // 上下文模式选择器:同步当前值 + hifi 高亮 + 仅 Direct 引擎显示。
+  const ctxSel = document.getElementById('ctx-mode-select') as HTMLSelectElement | null;
+  if (ctxSel) {
+    ctxSel.value = conv.contextMode || 'standard';
+    ctxSel.classList.toggle('hifi', ctxSel.value === 'hifi');
+    ctxSel.style.display = conv.engine === 'direct' ? '' : 'none';
   }
 }
 
@@ -2405,11 +2408,13 @@ function closeMoreMenu() { document.getElementById('sb-more-menu')?.classList.re
   };
   document.getElementById('btn-rules-gen')!.onclick = () => openRuleGenerator();
   document.getElementById('btn-clear')!.onclick = () => selectedId && api.clearConversation(selectedId);
-  // 高保真模式切换:开启后 Direct 引擎不截断 tool result + 更大上下文预算(交叉分析用)。
-  document.getElementById('btn-hifi')!.onclick = () => {
+  // 上下文模式切换:standard(默认省 token) / hifi(不截断+大预算)。以后可扩展更多模式。
+  const ctxSel = document.getElementById('ctx-mode-select') as HTMLSelectElement;
+  ctxSel.innerHTML = CONTEXT_MODES.map((m) => `<option value="${m}">${esc(tr('ctxMode.' + m))}</option>`).join('');
+  ctxSel.onchange = () => {
     if (!selectedId) return;
-    const conv = convs.get(selectedId);
-    void api.setHighFidelity(selectedId, !conv?.highFidelity);
+    void api.setContextMode(selectedId, ctxSel.value as ContextMode);
+    ctxSel.classList.toggle('hifi', ctxSel.value === 'hifi');
   };
   // 清除目标:发送 /goal(无参数)清除
   document.getElementById('btn-goal-clear')!.onclick = () => selectedId && void api.send(selectedId, '/goal');

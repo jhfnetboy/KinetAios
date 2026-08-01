@@ -24,6 +24,11 @@ export type ReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | '
 export type ApprovalPolicy = 'always' | 'never';
 
 export type EngineKind = 'direct' | 'claudeCode' | 'codex';
+
+// 上下文模式 —— 控制工具结果截断策略与上下文预算。以后可扩展更多模式(如 deep-research)。
+// Context mode — controls tool result truncation + context budget. Extensible for future modes.
+export type ContextMode = 'standard' | 'hifi';
+export const CONTEXT_MODES: ContextMode[] = ['standard', 'hifi'];
 export const ENGINE_LABELS: Record<EngineKind, string> = {
   direct: 'Kaios (Direct)',
   claudeCode: 'Claude Code',
@@ -264,7 +269,7 @@ export type Conversation = {
   model: string; // Direct 引擎用的模型,每会话独立;claudeCode/codex 由各自 CLI 配置
   profileId?: string | null; // 绑定的模型配置档(切换 profile 时更新;null = 用全局 settings)
   goal?: string | null; // 会话目标(通过 /goal 设置,持续注入 systemPrompt 直到清除)
-  highFidelity?: boolean; // 高保真模式:不截断 tool result + 更大上下文预算(省 token 关闭,交叉分析开启)
+  contextMode?: ContextMode; // 上下文模式:standard(默认省 token) / hifi(不截断+大预算) / 未来可扩展
   cwd: string;
   createdAt: number;
   customTitle: string | null;
@@ -330,8 +335,8 @@ export interface KinetAPI {
   setModel(id: string, model: string): Promise<boolean>;
   /** 切换会话使用的模型配置档(写入 profileId,引擎运行时读取 profile 配置) */
   setConvProfile(id: string, profileId: string | null): Promise<boolean>;
-  /** 切换会话的高保真模式(不截断 tool result + 更大上下文预算) */
-  setHighFidelity(id: string, on: boolean): Promise<boolean>;
+  /** 切换会话的上下文模式(standard / hifi) */
+  setContextMode(id: string, mode: ContextMode): Promise<boolean>;
   getSettings(): Promise<AppSettings>;
   saveSettings(s: AppSettings): Promise<boolean>;
   testConnection(s?: AppSettings): Promise<{ ok: boolean; message: string }>;

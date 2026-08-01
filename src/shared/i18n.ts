@@ -193,6 +193,10 @@ const ZH_CN: Dict = {
 
   'model.title': '模型(Direct 引擎,每会话独立;回车应用)',
   'model.ph': '模型',
+  // 上下文模式 / Context mode selector (per-conversation, Direct engine only)
+  'ctxMode.title': '上下文模式(每会话独立)',
+  'ctxMode.standard': '标准',
+  'ctxMode.hifi': '高保真',
 
   'skill.title': '选择 Skill(Direct)',
   'skill.lbl': 'Skill',
@@ -805,6 +809,10 @@ const EN: Dict = {
 
   'model.title': 'Model (Direct engine, per-session; Enter to apply)',
   'model.ph': 'Model',
+  // Context mode selector (per-conversation, Direct engine only)
+  'ctxMode.title': 'Context mode (per-session)',
+  'ctxMode.standard': 'Standard',
+  'ctxMode.hifi': 'Hi-Fi',
 
   'skill.title': 'Pick a skill (Direct)',
   'skill.lbl': 'Skill',
@@ -1418,6 +1426,10 @@ const ZH_TW: Dict = {
 
   'model.title': '模型(Direct 引擎,每工作階段獨立;Enter 套用)',
   'model.ph': '模型',
+  // 上下文模式 / Context mode selector
+  'ctxMode.title': '上下文模式(每工作階段獨立)',
+  'ctxMode.standard': '標準',
+  'ctxMode.hifi': '高保真',
 
   'skill.title': '選擇 Skill(Direct)',
   'skill.lbl': 'Skill',
@@ -2031,6 +2043,10 @@ const JA: Dict = {
 
   'model.title': 'モデル(Direct エンジン、セッション単位、Enter で適用)',
   'model.ph': 'モデル',
+  // コンテキストモード / Context mode selector
+  'ctxMode.title': 'コンテキストモード(セッションごと)',
+  'ctxMode.standard': '標準',
+  'ctxMode.hifi': 'Hi-Fi',
 
   'skill.title': 'Skill を選択(Direct)',
   'skill.lbl': 'Skill',

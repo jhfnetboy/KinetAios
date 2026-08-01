@@ -64,7 +64,8 @@ export function initStore(): void {
     ['pipeline_id', 'TEXT'],   // pipeline 创建的会话标记,null = 非 pipeline
     ['goal', 'TEXT'],          // 会话目标(/goal 设置,持续注入 systemPrompt),null = 无目标
     ['profile_id', 'TEXT'],    // 绑定的模型配置档 ID,null = 用全局默认配置
-    ['high_fidelity', 'INTEGER'], // 高保真模式(0/1):不截断 tool result + 更大上下文预算
+    ['high_fidelity', 'INTEGER'], // deprecated: 旧列,保留做 migration 兼容(见 context_mode)
+    ['context_mode', 'TEXT'],     // 上下文模式:standard(默认) / hifi(不截断+大预算) / 未来可扩展
   ] as const) {
     if (!hasColumn('conversations', col)) db.exec(`ALTER TABLE conversations ADD COLUMN ${col} ${def};`);
   }
@@ -119,22 +120,24 @@ type ConvRow = {
   goal: string | null;
   profile_id: string | null;
   high_fidelity: number;
+  context_mode: string | null;
 };
 
 export function saveConversation(c: Conversation): void {
   db.prepare(
-    `INSERT INTO conversations(id, engine, cwd, created_at, custom_title, engine_session_id, model, branch_info, pipeline_id, goal, profile_id, high_fidelity)
-     VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+    `INSERT INTO conversations(id, engine, cwd, created_at, custom_title, engine_session_id, model, branch_info, pipeline_id, goal, profile_id, high_fidelity, context_mode)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
      ON CONFLICT(id) DO UPDATE SET engine=excluded.engine, cwd=excluded.cwd,
        custom_title=excluded.custom_title, engine_session_id=excluded.engine_session_id, model=excluded.model,
        branch_info=excluded.branch_info, pipeline_id=excluded.pipeline_id, goal=excluded.goal, profile_id=excluded.profile_id,
-       high_fidelity=excluded.high_fidelity;`,
+       high_fidelity=excluded.high_fidelity, context_mode=excluded.context_mode;`,
   ).run(c.id, c.engine, c.cwd, c.createdAt, c.customTitle, c.engineSessionId, c.model,
     c.branchInfo ? JSON.stringify(c.branchInfo) : null,
     c.pipelineId ?? null,
     c.goal ?? null,
     c.profileId ?? null,
-    c.highFidelity ? 1 : 0);
+    c.contextMode === 'hifi' ? 1 : 0, // high_fidelity 列保留写,兼容旧版本读
+    c.contextMode ?? 'standard');
 }
 
 export function updateConversationMeta(c: Conversation): void {
@@ -198,7 +201,7 @@ function parseTurn(data: string): Turn {
 export function loadConversations(): Conversation[] {
   const rows = db
     .prepare(
-      'SELECT id, engine, cwd, created_at, custom_title, direct_history, engine_session_id, model, branch_info, pipeline_id, goal, profile_id, high_fidelity FROM conversations ORDER BY created_at DESC;',
+      'SELECT id, engine, cwd, created_at, custom_title, direct_history, engine_session_id, model, branch_info, pipeline_id, goal, profile_id, high_fidelity, context_mode FROM conversations ORDER BY created_at DESC;',
     )
     .all() as ConvRow[];
   return rows.map((r) => {
@@ -233,7 +236,7 @@ export function loadConversations(): Conversation[] {
       pipelineId: r.pipeline_id ?? null,
       goal: r.goal ?? null,
       profileId: r.profile_id ?? null,
-      highFidelity: !!r.high_fidelity,
+      contextMode: r.context_mode === 'hifi' ? 'hifi' : (r.high_fidelity ? 'hifi' : 'standard'), // 优先读 context_mode,旧数据从 high_fidelity 迁移
     };
     return conv;
   });

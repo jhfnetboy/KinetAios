@@ -56,7 +56,6 @@
             <span class="stat" id="head-stat"></span>
             <span class="status" id="head-status"></span>
             <button class="ghost" id="btn-clear" data-i18n-title="head.clear" title="清空当前会话" data-i18n="head.clearBtn">清空</button>
-            <button class="ghost" id="btn-hifi" title="高保真模式:不截断工具结果 + 更大上下文预算(适合多数据交叉分析,代价是更多 token)" data-i18n-title="head.hifiTitle">🔬</button>
             <button class="ghost" id="btn-ctx-inspector" title="上下文检查器(查看/编辑发送给模型的消息列表)" data-i18n-title="head.ctxInspectorTitle" data-i18n="head.ctxInspectorBtn">上下文</button>
             <button class="ghost" id="btn-del" data-i18n-title="head.delete" title="删除会话" data-i18n="head.deleteBtn">删除</button>
             <span class="ch-tabs">
@@ -90,6 +89,7 @@
               <input class="model-pill" id="model-input" list="model-list" data-i18n-title="model.title" title="模型(Direct 引擎,每会话独立;回车应用)" data-i18n-placeholder="model.ph" placeholder="模型" />
               <datalist id="model-list"></datalist>
               <select id="profile-select" class="model-pill" style="max-width:140px;display:none" title="切换模型配置档(含 API Key / Base URL / 协议等)"></select>
+              <select id="ctx-mode-select" class="model-pill" style="max-width:100px" data-i18n-title="ctxMode.title" title="上下文模式"></select>
               <button class="tool" id="btn-skill" data-i18n-title="skill.title" title="选择 Skill(Direct)"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4.5 12.5a1 1 0 00.8 1.5H10l-1 8 8.5-10.5a1 1 0 00-.8-1.5H12z"/></svg><span class="lbl" data-i18n="skill.lbl">Skill</span></button>
               <button class="tool" id="btn-mcp" data-i18n-title="mcp.title" title="MCP 服务与工具"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg><span class="lbl" data-i18n="mcp.lbl">MCP</span></button>
               <button class="tool" id="btn-capture" data-i18n-title="vision.capture" title="截图"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg><span class="lbl" data-i18n="vision.capture">截图</span></button>

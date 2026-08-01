@@ -25,7 +25,7 @@ import { allTools } from './tools';
 import { getBrand } from './brand';
 import { binEnv } from './engines';
 import { TaskManager, type TaskManagerEmitter } from './TaskManager';
-import type { AgentEvent, AppSettings, BudgetAlert, ConfigSnapshot, Conversation, CustomTool, EngineKind, GitActionKind, GitActionResult, GitChange, GitCommit, GitDiffResult, GitSnapshot, Pipeline, PromptTemplate, RuleConfig, Turn, ChatMsg } from '../shared/types';
+import type { AgentEvent, AppSettings, BudgetAlert, ConfigSnapshot, Conversation, ContextMode, CustomTool, EngineKind, GitActionKind, GitActionResult, GitChange, GitCommit, GitDiffResult, GitSnapshot, Pipeline, PromptTemplate, RuleConfig, Turn, ChatMsg } from '../shared/types';
 
 const execFileAsync = promisify(execFile);
 
@@ -625,9 +625,9 @@ function registerIpc(): void {
     taskManager.setConvProfile(id, profileId);
     return true;
   });
-  // 高保真模式开关 —— Direct 引擎不截断 tool result + 更大上下文预算。
-  ipcMain.handle('set-high-fidelity', (_e, id: string, on: boolean) => {
-    taskManager.setHighFidelity(id, on);
+  // 上下文模式切换 —— standard / hifi,以后可扩展更多模式。
+  ipcMain.handle('set-context-mode', (_e, id: string, mode: string) => {
+    taskManager.setContextMode(id, mode as ContextMode);
     return true;
   });
 
