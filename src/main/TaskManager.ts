@@ -408,13 +408,8 @@ export class TaskManager {
       // 3. 有 embedding 接口时:cosine > 0.85 视为重复(语义级,最准)
       // ──────────────────────────────────────────────────────────────────────
       const isDuplicateFuzzy = (candidate: string): boolean => {
-        const candTokens = tokenize(candidate);
-        if (candTokens.size === 0) return true; // 空串 → 当重复跳过
         for (const ex of existingFacts) {
-          const exTokens = tokenize(ex);
-          if (exTokens.size === 0) continue;
-          const sim = jaccard(candTokens, exTokens);
-          if (sim >= 0.45) return true;
+          if (textSimilarity(candidate, ex) >= 0.65) return true;
         }
         return false;
       };
@@ -732,24 +727,38 @@ function parseFactsLegacy(s: string): string[] {
   }
 }
 
-// ── 记忆模糊去重:Jaccard token 相似度(embedding 不可用时的降级方案)──
-// 中文按字 bigram,英文按单词;空格/标点分割。
-function tokenize(s: string): Set<string> {
-  const tokens = new Set<string>();
-  // 英文/数字 token
-  const words = s.toLowerCase().match(/[a-z0-9]+/g) ?? [];
-  for (const w of words) tokens.add(w);
-  // 中文 bigram("用户用Mac" → "用户","户用","用m"…)
-  const cleaned = s.replace(/\s+/g, '');
-  for (let i = 0; i < cleaned.length - 1; i++) {
-    tokens.add(cleaned.slice(i, i + 2));
+// ── 记忆模糊去重:文本相似度(embedding 不可用时的降级方案)──
+// 1. 规范化:去"用户"前缀、去括号注释、去空格、转小写
+// 2. 包含关系:短串是长串的子串 → 按长度比算相似度
+// 3. bigram Jaccard:中文按字 bigram、英文按单词,集合交集比
+// 取 max(包含比, Jaccard) 作为最终相似度,适配 5-30 字的短记忆。
+function textSimilarity(aRaw: string, bRaw: string): number {
+  const norm = (s: string): string => {
+    let r = s.replace(/^用户/, '').trim();
+    r = r.replace(/[（(].*?[)）]/g, '');
+    r = r.replace(/\s+/g, '').toLowerCase();
+    return r;
+  };
+  const a = norm(aRaw);
+  const b = norm(bRaw);
+  if (!a || !b) return 0;
+  // 包含关系:短的是长的子串
+  if (a.includes(b) || b.includes(a)) {
+    const shorter = Math.min(a.length, b.length);
+    const longer = Math.max(a.length, b.length);
+    return shorter > 3 ? shorter / longer : 0;
   }
-  return tokens;
-}
-
-function jaccard(a: Set<string>, b: Set<string>): number {
-  if (a.size === 0 || b.size === 0) return 0;
+  // bigram Jaccard
+  const tokens = (s: string): Set<string> => {
+    const t = new Set<string>();
+    for (const w of s.match(/[a-z0-9]+/g) ?? []) t.add(w);
+    for (let i = 0; i < s.length - 1; i++) t.add(s.slice(i, i + 2));
+    return t;
+  };
+  const ta = tokens(a);
+  const tb = tokens(b);
+  if (!ta.size || !tb.size) return 0;
   let inter = 0;
-  for (const t of a) if (b.has(t)) inter++;
-  return inter / (a.size + b.size - inter);
+  for (const t of ta) if (tb.has(t)) inter++;
+  return inter / (ta.size + tb.size - inter);
 }

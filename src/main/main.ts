@@ -1345,7 +1345,7 @@ function registerIpc(): void {
   });
   ipcMain.handle('memory-dedup', () => {
     try {
-      const pruned = dedupMemories(0.45);
+      const pruned = dedupMemories(0.65);
       return { ok: true, pruned };
     } catch (e) {
       return { ok: false, error: (e as Error)?.message ?? String(e) };

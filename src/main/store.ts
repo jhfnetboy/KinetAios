@@ -281,36 +281,51 @@ export function searchMemories(q: string, limit = 20): Array<{ id: string; conte
   ).all(like, limit) as Array<{ id: string; content: string; conversation_id: string | null }>;
 }
 
-// ── 存量记忆去重清理:用 Jaccard 模糊相似度合并重复记忆 ──
-// 返回被删除的条数。threshold 以下视为重复,保留最早创建的那条(历史更久的更可信)。
-export function dedupMemories(threshold = 0.6): number {
+// ── 存量记忆去重清理:文本相似度(规范化+包含检测+bigram Jaccard)合并重复 ──
+// 返回被删除的条数。threshold 以下视为重复,保留最早创建的那条。
+// textSimilarity 取 max(包含比, bigram Jaccard),适配 5-30 字的短记忆。
+function memTextSimilarity(aRaw: string, bRaw: string): number {
+  const norm = (s: string): string => {
+    let r = s.replace(/^用户/, '').trim();
+    r = r.replace(/[（(].*?[)）]/g, '');
+    r = r.replace(/\s+/g, '').toLowerCase();
+    return r;
+  };
+  const a = norm(aRaw);
+  const b = norm(bRaw);
+  if (!a || !b) return 0;
+  if (a.includes(b) || b.includes(a)) {
+    const shorter = Math.min(a.length, b.length);
+    const longer = Math.max(a.length, b.length);
+    return shorter > 3 ? shorter / longer : 0;
+  }
+  const tokens = (s: string): Set<string> => {
+    const t = new Set<string>();
+    for (const w of s.match(/[a-z0-9]+/g) ?? []) t.add(w);
+    for (let i = 0; i < s.length - 1; i++) t.add(s.slice(i, i + 2));
+    return t;
+  };
+  const ta = tokens(a);
+  const tb = tokens(b);
+  if (!ta.size || !tb.size) return 0;
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter++;
+  return inter / (ta.size + tb.size - inter);
+}
+
+export function dedupMemories(threshold = 0.65): number {
   const all = db.prepare('SELECT id, content, created_at FROM memories ORDER BY created_at ASC;').all() as Array<{
     id: string; content: string; created_at: number;
   }>;
-  const tokenize = (s: string): Set<string> => {
-    const tokens = new Set<string>();
-    const words = s.toLowerCase().match(/[a-z0-9]+/g) ?? [];
-    for (const w of words) tokens.add(w);
-    const cleaned = s.replace(/\s+/g, '');
-    for (let i = 0; i < cleaned.length - 1; i++) tokens.add(cleaned.slice(i, i + 2));
-    return tokens;
-  };
-  const jaccard = (a: Set<string>, b: Set<string>): number => {
-    if (a.size === 0 || b.size === 0) return 0;
-    let inter = 0;
-    for (const t of a) if (b.has(t)) inter++;
-    return inter / (a.size + b.size - inter);
-  };
 
-  const tokenized = all.map((m) => ({ ...m, tokens: tokenize(m.content) }));
   const toDelete = new Set<string>();
 
-  for (let i = 0; i < tokenized.length; i++) {
-    if (toDelete.has(tokenized[i].id)) continue;
-    for (let j = i + 1; j < tokenized.length; j++) {
-      if (toDelete.has(tokenized[j].id)) continue;
-      if (jaccard(tokenized[i].tokens, tokenized[j].tokens) >= threshold) {
-        toDelete.add(tokenized[j].id); // 删后来的,保留 i(更早创建)
+  for (let i = 0; i < all.length; i++) {
+    if (toDelete.has(all[i].id)) continue;
+    for (let j = i + 1; j < all.length; j++) {
+      if (toDelete.has(all[j].id)) continue;
+      if (memTextSimilarity(all[i].content, all[j].content) >= threshold) {
+        toDelete.add(all[j].id); // 删后来的,保留 i(更早创建)
       }
     }
   }
