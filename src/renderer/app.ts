@@ -2518,12 +2518,22 @@ function closeMoreMenu() { document.getElementById('sb-more-menu')?.classList.re
   // 导致 Enter 永远被吞。用 compositionstart/end 手动跟踪作为 fallback。
   // Track IME state manually — e.isComposing can get stuck on some Windows IMEs.
   let composing = false;
+  // compositionend 之后极短时间内可能还有一个 Enter(语音输入法确认/某些 IME 的行为),
+  // 用时间戳标记,防止这个"确认 Enter"被误当成发送。
+  // Some IMEs fire Enter immediately after compositionend (voice input confirmation).
+  let composeEndedAt = 0;
   composer.addEventListener('compositionstart', () => { composing = true; });
-  composer.addEventListener('compositionend', () => { composing = false; });
+  composer.addEventListener('compositionend', () => {
+    composing = false;
+    composeEndedAt = Date.now();
+  });
   composer.addEventListener('keydown', (e) => {
     // IME 组合输入中(中文/日文等还没确认候选):按键交给输入法,避免 Enter 确认词被误当成发送。
     // 用手动跟踪的 composing 替代 e.isComposing,后者在某些 IME 上会卡 true。
     if (composing || e.isComposing || e.keyCode === 229) return;
+    // compositionend 后 300ms 内的 Enter 视为 IME 确认键,不发送。
+    // Enter within 300ms after compositionend = IME confirmation, not user send intent.
+    if (e.key === 'Enter' && !e.shiftKey && Date.now() - composeEndedAt < 300) return;
     if (!slashMenu.hidden) {
       if (e.key === 'ArrowDown') { e.preventDefault(); moveSlash(1); return; }
       if (e.key === 'ArrowUp') { e.preventDefault(); moveSlash(-1); return; }
