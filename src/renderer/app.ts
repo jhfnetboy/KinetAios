@@ -5308,12 +5308,14 @@ async function renderTimeline(): Promise<void> {
   const msgHtml = memTimelineMsg ? `<span id="mem-msg" class="test-msg" style="margin-left:8px">${esc(memTimelineMsg)}</span>` : '';
   root.innerHTML = `
     <div class="card">
-      <h2>${tr('mem.timeline')}</h2>
-      <div class="sub">${tr('mem.timelineSub')}</div>
-      <div style="margin:10px 0">
-        <button id="mem-decay-btn" class="ghost">${tr('mem.decay')}</button>
-        <button id="mem-dedup-btn" class="ghost" style="margin-left:4px">${tr('mem.dedup')}</button>
-        <span class="sub" style="margin-left:8px">${tr('mem.pruneThreshold')}</span>
+      <h2 style="font-size:16px;margin:0 0 4px">${tr('mem.timeline')}</h2>
+      <div class="sub" style="margin-bottom:12px">${tr('mem.timelineSub')}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <div class="seg">
+          <button class="seg-btn" id="mem-decay-btn">${tr('mem.decay')}</button>
+          <button class="seg-btn" id="mem-dedup-btn">${tr('mem.dedup')}</button>
+        </div>
+        <span class="sub">${tr('mem.pruneThreshold')}</span>
         ${msgHtml}
       </div>
       <div id="mem-tl-list"></div>
@@ -5334,7 +5336,7 @@ async function renderTimeline(): Promise<void> {
       const w = Math.round(m.weight * 100);
       const wColor = w > 60 ? '#4caf50' : w > 30 ? '#e8b339' : '#f44336';
       const wLabel = w > 60 ? '高' : w > 30 ? '中' : '低';
-      return `<div class="mem-tl-item" style="border-left-color:${wColor}">
+      return `<div class="mem-tl-item">
         <div class="mem-tl-row">
           <span class="mem-tl-badge" style="background:${wColor}1a;color:${wColor}">${wLabel} ${w}%</span>
           <span class="mem-tl-date">${date}</span>
