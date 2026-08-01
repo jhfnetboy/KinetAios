@@ -172,6 +172,10 @@ export function deleteConversation(id: string): void {
     stmt('DELETE FROM turns WHERE conv_id=?;').run(id);
     stmt('DELETE FROM cost_log WHERE conv_id=?;').run(id);
     stmt('DELETE FROM memory_triples WHERE conversation_id=?;').run(id);
+    // 级联清理该会话产生的记忆 + 向量 + meta(避免孤儿数据)
+    stmt('DELETE FROM memory_embeddings WHERE memory_id IN (SELECT id FROM memories WHERE conversation_id=?);').run(id);
+    stmt('DELETE FROM memory_meta WHERE memory_id IN (SELECT id FROM memories WHERE conversation_id=?);').run(id);
+    stmt('DELETE FROM memories WHERE conversation_id=?;').run(id);
     stmt('DELETE FROM conversations WHERE id=?;').run(id);
   })();
 }
@@ -263,6 +267,15 @@ export function allMemoryContents(): string[] {
   return (db.prepare('SELECT content FROM memories;').all() as Array<{ content: string }>).map((r) => r.content);
 }
 
+// 关键词搜索 memories 表(LIKE 模糊匹配,不依赖 FTS5 也不依赖 embedding)。
+// 无 embedding 接口时 recall_memory 用此作为记忆搜索的 fallback。
+export function searchMemories(q: string, limit = 20): Array<{ id: string; content: string; conversation_id: string | null }> {
+  const like = `%${q.replace(/[%_]/g, (m) => '\\' + m)}%`;
+  return db.prepare(
+    `SELECT id, content, conversation_id FROM memories WHERE content LIKE ? ESCAPE '\\' ORDER BY created_at DESC LIMIT ?;`,
+  ).all(like, limit) as Array<{ id: string; content: string; conversation_id: string | null }>;
+}
+
 export function addMemory(content: string, convId?: string): string {
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
   db.prepare('INSERT INTO memories(id, content, created_at, conversation_id) VALUES(?,?,?,?);').run(
@@ -276,6 +289,8 @@ export function addMemory(content: string, convId?: string): string {
 
 export function updateMemory(id: string, content: string): void {
   db.prepare('UPDATE memories SET content=? WHERE id=?;').run(content, id);
+  // content 变了 → 删旧 embedding(recall 会回退 FTS5,下次 extract 时重新 embed)
+  db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;').run(id);
 }
 
 export function deleteMemory(id: string): void {
@@ -517,15 +532,17 @@ export function touchMemoryUsed(id: string): void {
 export function decayMemories(): number {
   const now = Date.now();
   const dayMs = 86400_000;
-  const all = (db.prepare('SELECT memory_id, weight, last_used FROM memory_meta;').all()) as Array<{ memory_id: string; weight: number; last_used: number }>;
+  // 一次 JOIN 拿到所有 meta + created_at,避免 N+1 查询
+  const all = (db.prepare(
+    `SELECT m.memory_id, m.weight, m.last_used,
+       (SELECT created_at FROM memories WHERE id = m.memory_id) AS created_at
+     FROM memory_meta m;`,
+  ).all()) as Array<{ memory_id: string; weight: number; last_used: number; created_at: number | null }>;
   let pruned = 0;
   for (const m of all) {
-    // last_used=0 → 用 created_at 做 fallback(从 memories 表取)
+    // last_used 存毫秒;created_at 存秒。统一到毫秒。
     let refTs = m.last_used;
-    if (!refTs) {
-      const mem = (db.prepare('SELECT created_at FROM memories WHERE id=?;').get(m.memory_id)) as { created_at: number } | undefined;
-      refTs = mem?.created_at ?? now;
-    }
+    if (!refTs) refTs = (m.created_at ?? now / 1000) * 1000;
     const days = (now - refTs) / dayMs;
     const decayed = m.weight * Math.pow(0.95, days);
     if (decayed < 0.1) {

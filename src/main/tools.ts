@@ -618,16 +618,16 @@ const recallMemory: Tool = {
         const qVec = new Float32Array(qVecArr[0]);
         const rows = store.listMemoryEmbeddings();
         if (rows.length) {
+          const byId = new Map(rows.map((r) => [r.memoryId, r]));
           const scored = rows
-            .map((r) => ({ content: r.content, score: store.cosine(qVec, r.vec) }))
+            .map((r) => ({ memoryId: r.memoryId, content: r.content, score: store.cosine(qVec, r.vec) }))
             .filter((r) => r.score > 0.2)
             .sort((a, b) => b.score - a.score)
             .slice(0, 20);
           if (scored.length) {
             // 命中的记忆 touch 一下(更新 lastUsed + useCount → 衰减权重 / 时间线统计才有数据)。
             for (const s of scored) {
-              const row = rows.find((r) => r.content === s.content);
-              if (row) try { store.touchMemoryUsed(row.memoryId); } catch { /* non-blocking */ }
+              try { store.touchMemoryUsed(s.memoryId); } catch { /* non-blocking */ }
             }
             const body = scored
               .map((m, i) => {
@@ -642,6 +642,8 @@ const recallMemory: Tool = {
     } catch (e) {
       console.warn('[recall] embed path failed, fallback to FTS5:', (e as Error)?.message);
     }
+    // 无 embedding 或语义命中 0 条 → 关键词搜 memories 表(LIKE 模糊匹配)。
+    const memHits = store.searchMemories(q, 20);
     // FTS5 fallback —— 覆盖对话历史(role/content 全文索引)。
     // FTS5 特殊字符(" * NEAR 等)可能导致语法错误 → try/catch
     let hits: Array<{ role: string; content: string }> = [];
@@ -651,15 +653,23 @@ const recallMemory: Tool = {
       // FTS5 语法错误 → 用转义后的查询重试
       hits = store.search(q.replace(/["*]/g, ' '), 20);
     }
-    if (!hits.length) return `没有匹配「${q}」的历史。`;
-    const body = hits
-      .map((m, i) => {
+    // 合并结果:memories(长期记忆) + history(对话历史)
+    const allResults: Array<{ source: string; content: string }> = [
+      ...memHits.map((m) => {
+        const cut = m.content.length > 200 ? m.content.slice(0, 200) + '…' : m.content;
+        return { source: '记忆', content: cut };
+      }),
+      ...hits.map((m) => {
         const preview = m.content.replace(/\n/g, ' ');
         const cut = preview.length > 200 ? preview.slice(0, 200) + '…' : preview;
-        return `[${i + 1}] (${m.role}) ${cut}`;
-      })
+        return { source: m.role, content: cut };
+      }),
+    ];
+    if (!allResults.length) return `没有匹配「${q}」的历史。`;
+    const body = allResults
+      .map((m, i) => `[${i + 1}] (${m.source}) ${m.content}`)
       .join('\n');
-    return `命中 ${hits.length} 条:\n${body}`;
+    return `命中 ${allResults.length} 条:\n${body}`;
   },
 };
 
