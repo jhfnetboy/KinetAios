@@ -5263,11 +5263,21 @@ function openCToolEditor(existing: { id: string; name: string; description: stri
 }
 
 // ── 记忆时间线视图 ──
+// ── 记忆时间线 / Memory Timeline ──
+// 衰减/去重按钮的反馈消息——跨 renderTimeline 重建保留。
+let memTimelineMsg = '';
+function setMemMsg(text: string, ok: boolean): void {
+  memTimelineMsg = text;
+  const el = document.getElementById('mem-msg');
+  if (el) { el.textContent = text; el.className = 'test-msg ' + (ok ? 'ok' : 'bad'); }
+}
+
 async function renderTimeline(): Promise<void> {
   const root = document.getElementById('timeline-view')!;
   const r = await api.memoryTimeline();
   const items = r.ok ? r.items ?? [] : [];
   const sorted = [...items].sort((a, b) => b.created_at - a.created_at);
+  const msgHtml = memTimelineMsg ? `<span id="mem-msg" class="test-msg" style="margin-left:8px">${esc(memTimelineMsg)}</span>` : '';
   root.innerHTML = `
     <div class="card">
       <h2>${tr('mem.timeline')}</h2>
@@ -5276,6 +5286,7 @@ async function renderTimeline(): Promise<void> {
         <button id="mem-decay-btn" class="ghost">${tr('mem.decay')}</button>
         <button id="mem-dedup-btn" class="ghost" style="margin-left:4px">${tr('mem.dedup')}</button>
         <span class="sub" style="margin-left:8px">${tr('mem.pruneThreshold')}</span>
+        ${msgHtml}
       </div>
       <div id="mem-tl-list"></div>
     </div>
@@ -5301,12 +5312,14 @@ async function renderTimeline(): Promise<void> {
   }
   document.getElementById('mem-decay-btn')!.onclick = async () => {
     const dr = await api.memoryDecay();
-    if (dr.ok) showMsg(tr('mem.decayDone', { n: dr.pruned ?? 0 }), true);
+    if (dr.ok) setMemMsg(tr('mem.decayDone', { n: dr.pruned ?? 0 }), true);
+    else setMemMsg(dr.error ?? 'error', false);
     renderTimeline();
   };
   document.getElementById('mem-dedup-btn')!.onclick = async () => {
     const dr = await api.memoryDedup();
-    if (dr.ok) showMsg(tr('mem.dedupDone', { n: dr.pruned ?? 0 }), true);
+    if (dr.ok) setMemMsg(tr('mem.dedupDone', { n: dr.pruned ?? 0 }), true);
+    else setMemMsg(dr.error ?? 'error', false);
     renderTimeline();
   };
 }

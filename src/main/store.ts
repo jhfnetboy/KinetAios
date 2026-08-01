@@ -19,6 +19,11 @@ function hasColumn(table: string, column: string): boolean {
   return rows.some((r) => r.name === column);
 }
 
+// 检查表是否存在(旧版 DB 可能未迁移,memory_embeddings/memory_meta 等表缺失)
+function hasTable(table: string): boolean {
+  return (db.prepare("SELECT count(*) as n FROM sqlite_master WHERE type='table' AND name=?;").get(table) as { n: number }).n > 0;
+}
+
 export function initStore(): void {
   db = new Database(dbFile());
   db.pragma('journal_mode = WAL');
@@ -173,8 +178,8 @@ export function deleteConversation(id: string): void {
     stmt('DELETE FROM cost_log WHERE conv_id=?;').run(id);
     stmt('DELETE FROM memory_triples WHERE conversation_id=?;').run(id);
     // 级联清理该会话产生的记忆 + 向量 + meta(避免孤儿数据)
-    stmt('DELETE FROM memory_embeddings WHERE memory_id IN (SELECT id FROM memories WHERE conversation_id=?);').run(id);
-    stmt('DELETE FROM memory_meta WHERE memory_id IN (SELECT id FROM memories WHERE conversation_id=?);').run(id);
+    if (hasTable('memory_embeddings')) stmt('DELETE FROM memory_embeddings WHERE memory_id IN (SELECT id FROM memories WHERE conversation_id=?);').run(id);
+    if (hasTable('memory_meta')) stmt('DELETE FROM memory_meta WHERE memory_id IN (SELECT id FROM memories WHERE conversation_id=?);').run(id);
     stmt('DELETE FROM memories WHERE conversation_id=?;').run(id);
     stmt('DELETE FROM conversations WHERE id=?;').run(id);
   })();
@@ -314,8 +319,9 @@ export function dedupMemories(threshold = 0.6): number {
   db.transaction(() => {
     for (const id of toDelete) {
       db.prepare('DELETE FROM memories WHERE id=?;').run(id);
-      db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;').run(id);
-      db.prepare('DELETE FROM memory_meta WHERE memory_id=?;').run(id);
+      // memory_embeddings / memory_meta 可能不存在(旧版 DB 未迁移),用 IF EXISTS 容错
+      try { if (hasTable('memory_embeddings')) db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;').run(id); } catch { /* ignore */ }
+      try { if (hasTable('memory_meta')) db.prepare('DELETE FROM memory_meta WHERE memory_id=?;').run(id); } catch { /* ignore */ }
       pruned++;
     }
   })();
@@ -336,7 +342,7 @@ export function addMemory(content: string, convId?: string): string {
 export function updateMemory(id: string, content: string): void {
   db.prepare('UPDATE memories SET content=? WHERE id=?;').run(content, id);
   // content 变了 → 删旧 embedding(recall 会回退 FTS5,下次 extract 时重新 embed)
-  db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;').run(id);
+  if (hasTable('memory_embeddings')) db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;').run(id);
 }
 
 export function deleteMemory(id: string): void {
@@ -344,8 +350,8 @@ export function deleteMemory(id: string): void {
   // 事务保证原子性。
   db.transaction(() => {
     db.prepare('DELETE FROM memories WHERE id=?;').run(id);
-    db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;').run(id);
-    db.prepare('DELETE FROM memory_meta WHERE memory_id=?;').run(id);
+    if (hasTable('memory_embeddings')) db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;').run(id);
+    if (hasTable('memory_meta')) db.prepare('DELETE FROM memory_meta WHERE memory_id=?;').run(id);
   })();
 }
 
@@ -455,7 +461,7 @@ export function setMemoryEmbedding(memoryId: string, vec: number[], model: strin
     .run(memoryId, buf, model, Date.now());
 }
 export function deleteMemoryEmbedding(memoryId: string): void {
-  db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;').run(memoryId);
+  if (hasTable('memory_embeddings')) db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;').run(memoryId);
 }
 export function listMemoryEmbeddings(): MemoryEmbeddingRow[] {
   const rows = db.prepare(
