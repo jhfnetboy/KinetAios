@@ -1436,20 +1436,21 @@ body.files { display: flex; flex-direction: column; height: 100vh; margin: 0; us
 .mm-scope { display: flex; gap: 4px; flex: 1; }
 .mm-view { display: flex; gap: 4px; flex: 0 0 auto; }
 .mm-view button { padding: 4px 10px; font-size: 12px; }
-.mm-view button.active { background: var(--accent); color: var(--bg-elev); border-color: var(--accent); }
+.mm-view button.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .mm-scope button { padding: 4px 10px; font-size: 12px; }
-.mm-scope button.active { background: var(--accent); color: var(--bg-elev); border-color: var(--accent); }
+.mm-scope button.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 #mm-close { padding: 4px 10px; font-size: 18px; line-height: 1; }
 .mm-list { flex: 1; overflow-y: auto; margin-top: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
 /* graph viz 模式:mm-list 撑满可用空间给 canvas */
 .mm-list:has(.mm-graph-wrap) { flex: 1 1 400px; overflow: hidden; }
 .mm-empty { color: var(--text-dim); font-size: 13px; padding: 24px; text-align: center; }
-.mm-row { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; background: var(--bg); }
-.mm-text { font-size: 13px; line-height: 1.5; user-select: text; white-space: pre-wrap; word-break: break-word; }
+.mm-row { border: 1px solid var(--border-soft); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; background: var(--bg); transition: border-color var(--dur-fast) var(--ease-out); }
+.mm-row:hover { border-color: var(--border); }
+.mm-text { font-size: 13px; line-height: 1.5; user-select: text; white-space: pre-wrap; word-break: break-word; color: var(--text); }
 .mm-from { font-size: 11px; color: var(--text-faint); }
 .mm-actions { display: flex; gap: 6px; justify-content: flex-end; }
 .mm-actions button { padding: 3px 10px; font-size: 12px; }
-.mm-input { width: 100%; min-height: 60px; resize: vertical; font: inherit; font-size: 13px; padding: 8px; user-select: text; }
+.mm-input { width: 100%; min-height: 60px; resize: vertical; font: inherit; font-size: 13px; padding: 8px; user-select: text; background: var(--bg-input); color: var(--text); border: 1px solid var(--border); border-radius: 6px; }
 
 /* Memory Graph 三元组行:[s] → predicate → [o] */
 .mm-triple-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; user-select: text; }
@@ -1568,8 +1569,9 @@ body.arena { display: flex; flex-direction: column; height: 100vh; margin: 0; ba
 button.sm { padding: 3px 8px; font-size: 11px; }
 
 /* ── 记忆时间线 ── */
-.mem-tl-item { border-left: 3px solid var(--border); margin-bottom: 4px; padding: 8px 0 8px 12px; border-radius: 0 6px 6px 0; }
-.mem-tl-item:hover { background: var(--bg-elev); }
+.card { background: var(--bg-elev); border: 1px solid var(--border-soft); border-radius: 12px; padding: 18px 20px; box-shadow: var(--shadow-sm); }
+.mem-tl-item { border-left: 3px solid var(--border); margin-bottom: 4px; padding: 8px 0 8px 12px; border-radius: 0 6px 6px 0; transition: background var(--dur-fast) var(--ease-out); }
+.mem-tl-item:hover { background: var(--bg-elev-2); }
 .mem-tl-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .mem-tl-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
 .mem-tl-date { font-size: 11px; color: var(--text-faint); }
