@@ -3265,7 +3265,7 @@ async function send() {
       text += `\n\x00IMAGES${JSON.stringify(imgs)}\x00`;
     }
     if (at.missing.length) alert(tr('attach.missingAlert', { list: at.missing.join('\n') }));
-    showChat();
+    if (currentView !== 'chat') showChat();
     // 先发送,成功后再清空(IPC 失败时用户数据不丢失)
     try {
       await api.send(selectedId, text);
