@@ -140,7 +140,8 @@
 [data-theme="aurora"] .s-section,
 [data-theme="aurora"] #wb .card,
 [data-theme="aurora"] #timeline-view .card,
-[data-theme="aurora"] .mm-row {
+[data-theme="aurora"] .mm-row,
+[data-theme="aurora"] .mem-tl-item {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -283,7 +284,8 @@
 [data-theme="serene"] .s-section,
 [data-theme="serene"] #wb .card,
 [data-theme="serene"] #timeline-view .card,
-[data-theme="serene"] .mm-row {
+[data-theme="serene"] .mm-row,
+[data-theme="serene"] .mem-tl-item {
   background: var(--serene-glass);
   backdrop-filter: blur(var(--serene-blur));
   -webkit-backdrop-filter: blur(var(--serene-blur));
@@ -460,7 +462,8 @@
 [data-theme="tahoe"] .tpl-card,
 [data-theme="tahoe"] .ctool-card,
 [data-theme="tahoe"] #timeline-view .card,
-[data-theme="tahoe"] .mm-row {
+[data-theme="tahoe"] .mm-row,
+[data-theme="tahoe"] .mem-tl-item {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
@@ -1954,7 +1957,8 @@ button.sm { padding: 3px 8px; font-size: 11px; }
 [data-theme="sierra"] .tpl-card,
 [data-theme="sierra"] .ctool-card,
 [data-theme="sierra"] #timeline-view .card,
-[data-theme="sierra"] .mm-row {
+[data-theme="sierra"] .mm-row,
+[data-theme="sierra"] .mem-tl-item {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));

@@ -331,12 +331,16 @@ export function dedupMemories(threshold = 0.65): number {
   }
 
   let pruned = 0;
+  const hasEmbed = hasTable('memory_embeddings');
+  const hasMeta = hasTable('memory_meta');
+  const stmtDelMem = db.prepare('DELETE FROM memories WHERE id=?;');
+  const stmtDelEmbed = hasEmbed ? db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;') : null;
+  const stmtDelMeta = hasMeta ? db.prepare('DELETE FROM memory_meta WHERE memory_id=?;') : null;
   db.transaction(() => {
     for (const id of toDelete) {
-      db.prepare('DELETE FROM memories WHERE id=?;').run(id);
-      // memory_embeddings / memory_meta 可能不存在(旧版 DB 未迁移),用 IF EXISTS 容错
-      try { if (hasTable('memory_embeddings')) db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;').run(id); } catch { /* ignore */ }
-      try { if (hasTable('memory_meta')) db.prepare('DELETE FROM memory_meta WHERE memory_id=?;').run(id); } catch { /* ignore */ }
+      stmtDelMem.run(id);
+      if (stmtDelEmbed) stmtDelEmbed.run(id);
+      if (stmtDelMeta) stmtDelMeta.run(id);
       pruned++;
     }
   })();
@@ -587,7 +591,7 @@ export function loadMemoryTimeline(): Array<{ id: string; content: string; conve
 // 触摸一条记忆的 lastUsed(被 recall 命中时调用)
 // 使用 INSERT ... ON CONFLICT 避免 read-then-write 竞态
 export function touchMemoryUsed(id: string): void {
-  db.prepare(`INSERT INTO memory_meta(memory_id, weight, last_used, use_count)
+  stmt(`INSERT INTO memory_meta(memory_id, weight, last_used, use_count)
     VALUES(?, 1.0, ?, 1)
     ON CONFLICT(memory_id) DO UPDATE SET last_used=excluded.last_used, use_count=use_count+1;`)
     .run(id, Date.now());
@@ -599,6 +603,12 @@ export function touchMemoryUsed(id: string): void {
 export function decayMemories(): number {
   const now = Date.now();
   const dayMs = 86400_000;
+  const hasEmbed = hasTable('memory_embeddings');
+  // 预编译 statement(避免循环内重复 prepare)
+  const stmtDel = db.prepare('DELETE FROM memories WHERE id=?;');
+  const stmtDelMeta = db.prepare('DELETE FROM memory_meta WHERE memory_id=?;');
+  const stmtDelEmbed = hasEmbed ? db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;') : null;
+  const stmtUpdate = db.prepare('UPDATE memory_meta SET weight=? WHERE memory_id=?;');
   // 一次 JOIN 拿到所有 meta + created_at,避免 N+1 查询
   const all = (db.prepare(
     `SELECT m.memory_id, m.weight, m.last_used,
@@ -606,21 +616,24 @@ export function decayMemories(): number {
      FROM memory_meta m;`,
   ).all()) as Array<{ memory_id: string; weight: number; last_used: number; created_at: number | null }>;
   let pruned = 0;
-  for (const m of all) {
-    // last_used 存毫秒;created_at 存秒。统一到毫秒。
-    let refTs = m.last_used;
-    if (!refTs) refTs = (m.created_at ?? now / 1000) * 1000;
-    const days = (now - refTs) / dayMs;
-    const decayed = m.weight * Math.pow(0.95, days);
-    if (decayed < 0.1) {
-      db.prepare('DELETE FROM memories WHERE id=?;').run(m.memory_id);
-      db.prepare('DELETE FROM memory_meta WHERE memory_id=?;').run(m.memory_id);
-      db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;').run(m.memory_id);
-      pruned++;
-    } else {
-      db.prepare('UPDATE memory_meta SET weight=? WHERE memory_id=?;').run(decayed, m.memory_id);
+  const tx = db.transaction(() => {
+    for (const m of all) {
+      // last_used 存毫秒;created_at 存秒。统一到毫秒。
+      let refTs = m.last_used;
+      if (!refTs) refTs = (m.created_at ?? now / 1000) * 1000;
+      const days = (now - refTs) / dayMs;
+      const decayed = m.weight * Math.pow(0.95, days);
+      if (decayed < 0.1) {
+        stmtDel.run(m.memory_id);
+        stmtDelMeta.run(m.memory_id);
+        if (stmtDelEmbed) stmtDelEmbed.run(m.memory_id);
+        pruned++;
+      } else {
+        stmtUpdate.run(decayed, m.memory_id);
+      }
     }
-  }
+  });
+  tx();
   return pruned;
 }
 

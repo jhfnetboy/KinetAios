@@ -461,8 +461,6 @@ export interface KinetAPI {
   // 搜索会话(按标题/prompt 内容模糊匹配,给 @conv: 引用补全用)。
   searchConversations(query: string): Promise<Array<{ id: string; title: string; engine: string; turns: number; lastActive: number }>>;
   // ── 全局对话搜索(跨所有会话搜内容)──
-  searchHistory(query: string): Promise<Array<{ role: string; content: string; convId?: string; convTitle?: string }>>;
-  // ── 全局对话搜索(跨所有会话搜内容)──
   searchHistory(query: string): Promise<Array<{ role: string; content: string; convId: string | null; convTitle: string | null }>>;
   // ── 记忆图谱数据(给力导向图渲染,含溯源+冲突)──
   memoryGraphData(): Promise<{

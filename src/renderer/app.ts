@@ -3357,6 +3357,7 @@ function showTimeline() {
   document.getElementById('timeline-view')!.classList.add('active');
   syncViewButtons();
   tlPage = 0;
+  memTimelineMsg = '';
   renderTimeline();
 }
 
@@ -4084,8 +4085,9 @@ async function openMemoryPanel(): Promise<void> {
 }
 function closeMemoryPanel(): void {
   document.getElementById('memory-modal')!.classList.remove('show');
-  // 停止力导向图动画,释放 CPU(之前漏了 → 关面板后 rAF 继续跑)
+  // 停止力导向图动画 + 清理 RO/listener,释放 CPU
   stopGraphAnim();
+  if (mmGraphCleanup) { mmGraphCleanup(); mmGraphCleanup = null; }
 }
 async function renderMemoryList(): Promise<void> {
   const listEl = document.getElementById('mm-list')!;
@@ -4222,6 +4224,9 @@ async function renderGraphList(
 // 力模型:库仑排斥 + 弹簧吸引 + 中心引力 + 阻尼。
 interface GNode { label: string; x: number; y: number; vx: number; vy: number; r: number; degree: number; fixed: boolean; }
 interface GEdge { from: string; to: string; label: string; tripleId: string; }
+// 力导向图清理:StopAnim + disconnect ResizeObserver + abort 事件监听
+// 跨 renderGraphViz 重建保留,避免泄漏(之前 RO 和 6 个 listener 从不清理)。
+let mmGraphCleanup: (() => void) | null = null;
 function stopGraphAnim(): void {
   if (mmGraphAnim) { cancelAnimationFrame(mmGraphAnim); mmGraphAnim = 0; }
 }
@@ -4275,6 +4280,10 @@ function makeNode(label: string): GNode {
 }
 
 function runForceGraph(canvas: HTMLCanvasElement, nodes: GNode[], edges: GEdge[], tipBar: HTMLElement): void {
+  // 清理上一次的 RO + listener(防止泄漏)
+  if (mmGraphCleanup) { mmGraphCleanup(); mmGraphCleanup = null; }
+  stopGraphAnim();
+  const ac = new AbortController();
   const ctx = canvas.getContext('2d')!;
   const dpr = window.devicePixelRatio || 1;
 
@@ -4297,6 +4306,8 @@ function runForceGraph(canvas: HTMLCanvasElement, nodes: GNode[], edges: GEdge[]
   resize();
   const ro = new ResizeObserver(resize);
   ro.observe(canvas);
+  // 注册清理:disconnect RO + abort 所有 listener
+  mmGraphCleanup = () => { ro.disconnect(); ac.abort(); };
 
   // 屏幕坐标 → 世界坐标
   function s2w(sx: number, sy: number): [number, number] {
@@ -4476,7 +4487,7 @@ function runForceGraph(canvas: HTMLCanvasElement, nodes: GNode[], edges: GEdge[]
       dragging = hit;
       canvas.style.cursor = 'grabbing';
     }
-  });
+  }, { signal: ac.signal });
   canvas.addEventListener('mousemove', (ev) => {
     const rect = canvas.getBoundingClientRect();
     const sx = ev.clientX - rect.left, sy = ev.clientY - rect.top;
@@ -4505,17 +4516,17 @@ function runForceGraph(canvas: HTMLCanvasElement, nodes: GNode[], edges: GEdge[]
         }
       }
     }
-  });
+  }, { signal: ac.signal });
   canvas.addEventListener('mouseup', () => {
     dragging = null;
     mouseDown = false;
     canvas.style.cursor = hoverNode ? 'pointer' : 'default';
-  });
+  }, { signal: ac.signal });
   canvas.addEventListener('mouseleave', () => {
     dragging = null;
     mouseDown = false;
     hoverNode = null;
-  });
+  }, { signal: ac.signal });
   // 滚轮缩放
   canvas.addEventListener('wheel', (ev) => {
     ev.preventDefault();
@@ -4527,7 +4538,7 @@ function runForceGraph(canvas: HTMLCanvasElement, nodes: GNode[], edges: GEdge[]
     zoom = Math.max(0.3, Math.min(3, zoom * delta));
     panX = sx - wx * zoom;
     panY = sy - wy * zoom;
-  }, { passive: false });
+  }, { passive: false, signal: ac.signal });
   // 双击节点 → 删除关联三元组
   canvas.addEventListener('dblclick', (ev) => {
     const rect = canvas.getBoundingClientRect();
@@ -4535,9 +4546,11 @@ function runForceGraph(canvas: HTMLCanvasElement, nodes: GNode[], edges: GEdge[]
     if (hit && confirm(tr('graph.delNode').replace('{n}', hit.label))) {
       // 删除该节点相关的所有三元组
       const rels = edges.filter((e) => e.from === hit.label || e.to === hit.label);
-      Promise.all(rels.map((r) => api.memoryTripleDelete(r.tripleId))).then(() => renderMemoryGraph());
+      Promise.all(rels.map((r) => api.memoryTripleDelete(r.tripleId)))
+        .then(() => renderMemoryGraph())
+        .catch(() => { /* ignore */ });
     }
-  });
+  }, { signal: ac.signal });
 
   // 启动动画
   stopGraphAnim();
@@ -4548,17 +4561,25 @@ function memEdit(row: HTMLElement, id: string): void {
   const original = row.querySelector<HTMLElement>('.mm-text')!.textContent ?? '';
   row.innerHTML = `<textarea class="mm-input"></textarea>
     <div class="mm-actions">
+      <span class="mm-edit-msg sub" style="font-size:11px"></span>
       <button class="primary mm-save">${esc(tr('mem.save'))}</button>
       <button class="ghost mm-cancel">${esc(tr('mem.cancel'))}</button>
     </div>`;
   const ta = row.querySelector<HTMLTextAreaElement>('.mm-input')!;
+  const msgEl = row.querySelector<HTMLElement>('.mm-edit-msg')!;
   ta.value = original;
   ta.focus();
   ta.select();
+  // Cmd/Ctrl+Enter 保存,Escape 取消
+  ta.onkeydown = (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); row.querySelector<HTMLElement>('.mm-save')!.click(); }
+    if (e.key === 'Escape') { e.preventDefault(); void renderMemoryList(); }
+  };
   row.querySelector<HTMLElement>('.mm-save')!.onclick = async () => {
     const v = ta.value.trim();
-    if (!v) return;
-    await api.memoryUpdate(id, v);
+    if (!v) { msgEl.textContent = '内容不能为空'; return; }
+    const r = await api.memoryUpdate(id, v);
+    if (!r.ok) { msgEl.textContent = r.error ?? '保存失败'; return; }
     await renderMemoryList();
   };
   row.querySelector<HTMLElement>('.mm-cancel')!.onclick = () => void renderMemoryList();
