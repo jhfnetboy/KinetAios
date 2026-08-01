@@ -22,6 +22,8 @@ export interface RunOpts {
   maxTurns?: number;
   // 上下文模式:hifi 时不截断 tool result + 更大上下文预算(适合多数据源交叉分析,代价是更多 token)。
   contextMode?: ContextMode;
+  // 高保真模式的上下文预算(token)——从设置页读取,控制 reactive trim 上限。
+  hifiContextBudget?: number;
   onEvent: (e: AgentEvent) => void;
 }
 
@@ -75,7 +77,7 @@ export async function runAgentLoop(opts: RunOpts): Promise<ChatMsg[]> {
       if (!retriedAfterShrink && isContextTooLong(e)) {
         retriedAfterShrink = true;
         const beforeMsgs = messages;
-        messages = [{ role: 'system', content: systemPrompt }, ...memMsg, ...trimHistoryToTokenBudget(dropTransient(messages), opts.contextMode === 'hifi' ? 60_000 : 15_000, snapshot.apiProtocol)];
+        messages = [{ role: 'system', content: systemPrompt }, ...memMsg, ...trimHistoryToTokenBudget(dropTransient(messages), opts.contextMode === 'hifi' ? (opts.hifiContextBudget ?? 60_000) : 15_000, snapshot.apiProtocol)];
         // 发压缩事件:让用户知道上下文超长被自动裁剪了
         const beforeTokens = estTokenCount(beforeMsgs);
         const afterTokens = estTokenCount(messages);

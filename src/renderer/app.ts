@@ -1378,6 +1378,8 @@ async function showSettings() {
         <h3>${tr('settings.sec.agent')}</h3>
         <div class="field"><label>${tr('settings.maxTurns')}</label><input id="s-maxturns" type="number" min="0" max="500" value="${s.maxTurns ?? 50}" style="width:80px" /></div>
         <div class="field-desc" style="color:var(--muted);font-size:11px;margin:-4px 0 0 0">${tr('settings.maxTurns.desc')}</div>
+        <div class="field" style="margin-top:12px"><label>${tr('settings.hifiBudget')}</label><input id="s-hifi-budget" type="number" min="10000" max="1000000" step="10000" value="${s.hifiContextBudget ?? 200000}" style="width:100px" /> <span style="color:var(--text-faint);font-size:11px">tokens</span></div>
+        <div class="field-desc" style="color:var(--muted);font-size:11px;margin:-4px 0 0 0">${tr('settings.hifiBudget.desc')}</div>
       </div>
       <div class="s-section">
         <h3>${tr('settings.sec.window')}</h3>
@@ -2118,6 +2120,7 @@ function readSettingsForm(): AppSettings {
     theme: (document.getElementById('s-theme') as HTMLSelectElement).value as 'dark' | 'light' | 'aurora' | 'serene' | 'tahoe' | 'sierra' | 'craft',
     townStyle: ((document.getElementById('s-town-style') as HTMLSelectElement)?.value as 'classic' | 'minecraft') || 'classic',
     maxTurns: Number((document.getElementById('s-maxturns') as HTMLInputElement).value) || 0,
+    hifiContextBudget: Number((document.getElementById('s-hifi-budget') as HTMLInputElement).value) || 200000,
     closeBehavior: (document.getElementById('s-close-behavior') as HTMLSelectElement).value as AppSettings['closeBehavior'],
     embedBaseURL: (document.getElementById('s-embed-base') as HTMLInputElement).value.trim(),
     embedApiKey: (document.getElementById('s-embed-key') as HTMLInputElement).value.trim(),
