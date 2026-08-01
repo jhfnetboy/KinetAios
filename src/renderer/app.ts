@@ -2437,15 +2437,15 @@ function closeMoreMenu() { document.getElementById('sb-more-menu')?.classList.re
   // 长期记忆面板(🧠)。
   document.getElementById('mm-close')!.onclick = () => closeMemoryPanel();
   document.getElementById('mm-scope-this')!.onclick = async () => {
-    mmScope = 'this';
+    mmScope = 'this'; mmPage = 0;
     await renderMemoryList();
   };
   document.getElementById('mm-scope-all')!.onclick = async () => {
-    mmScope = 'all';
+    mmScope = 'all'; mmPage = 0;
     await renderMemoryList();
   };
   document.getElementById('mm-view-facts')!.onclick = async () => {
-    mmView = 'facts';
+    mmView = 'facts'; mmPage = 0;
     await renderMemoryList();
   };
   document.getElementById('mm-view-graph')!.onclick = async () => {
@@ -3356,6 +3356,7 @@ function showTimeline() {
   hideAllViews();
   document.getElementById('timeline-view')!.classList.add('active');
   syncViewButtons();
+  tlPage = 0;
   renderTimeline();
 }
 
@@ -4073,8 +4074,11 @@ function esc(s: string): string {
 // 每行:文本 + 编辑(行内 textarea)+ 删除。来源频道显示 conv 的 customTitle 或 cwd 末段。
 let mmScope: 'this' | 'all' = 'this';
 let mmView: 'facts' | 'graph' = 'facts';
+let mmPage = 0;
+const MM_PAGE_SIZE = 50;
 async function openMemoryPanel(): Promise<void> {
   mmScope = selectedId ? 'this' : 'all';
+  mmPage = 0;
   document.getElementById('memory-modal')!.classList.add('show');
   await renderMemoryList();
 }
@@ -4103,7 +4107,13 @@ async function renderMemoryList(): Promise<void> {
     listEl.innerHTML = `<div class="mm-empty">${tr('mem.empty')}</div>`;
     return;
   }
-  listEl.innerHTML = r.items
+  // 分页
+  const totalPages = Math.max(1, Math.ceil(r.items.length / MM_PAGE_SIZE));
+  if (mmPage >= totalPages) mmPage = totalPages - 1;
+  if (mmPage < 0) mmPage = 0;
+  const pageItems = r.items.slice(mmPage * MM_PAGE_SIZE, (mmPage + 1) * MM_PAGE_SIZE);
+
+  listEl.innerHTML = pageItems
     .map((m) => {
       const fromLabel = m.conversation_id
         ? convLabel(m.conversation_id)
@@ -4116,8 +4126,20 @@ async function renderMemoryList(): Promise<void> {
           <button class="ghost mm-del" data-i18n="mem.del">${esc(tr('mem.del'))}</button>
         </div>
       </div>`;
-    })
-    .join('');
+    }).join('');
+  // 分页器
+  if (totalPages > 1) {
+    const pager = document.createElement('div');
+    pager.className = 'mm-pager';
+    pager.innerHTML = `
+      <button class="ghost mm-prev" ${mmPage === 0 ? 'disabled' : ''}>‹</button>
+      <span class="mm-page-info">${mmPage + 1} / ${totalPages}（共 ${r.items.length} 条）</span>
+      <button class="ghost mm-next" ${mmPage >= totalPages - 1 ? 'disabled' : ''}>›</button>
+    `;
+    listEl.appendChild(pager);
+    (pager.querySelector('.mm-prev') as HTMLElement).onclick = () => { mmPage--; renderMemoryList(); };
+    (pager.querySelector('.mm-next') as HTMLElement).onclick = () => { mmPage++; renderMemoryList(); };
+  }
   listEl.querySelectorAll<HTMLElement>('.mm-row').forEach((row) => {
     const id = row.dataset.id!;
     row.querySelector<HTMLElement>('.mm-edit')!.onclick = () => memEdit(row, id);
@@ -5266,6 +5288,8 @@ function openCToolEditor(existing: { id: string; name: string; description: stri
 // ── 记忆时间线 / Memory Timeline ──
 // 衰减/去重按钮的反馈消息——跨 renderTimeline 重建保留。
 let memTimelineMsg = '';
+let tlPage = 0;
+const TL_PAGE_SIZE = 50;
 function setMemMsg(text: string, ok: boolean): void {
   memTimelineMsg = text;
   const el = document.getElementById('mem-msg');
@@ -5277,6 +5301,10 @@ async function renderTimeline(): Promise<void> {
   const r = await api.memoryTimeline();
   const items = r.ok ? r.items ?? [] : [];
   const sorted = [...items].sort((a, b) => b.created_at - a.created_at);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / TL_PAGE_SIZE));
+  if (tlPage >= totalPages) tlPage = totalPages - 1;
+  if (tlPage < 0) tlPage = 0;
+  const pageItems = sorted.slice(tlPage * TL_PAGE_SIZE, (tlPage + 1) * TL_PAGE_SIZE);
   const msgHtml = memTimelineMsg ? `<span id="mem-msg" class="test-msg" style="margin-left:8px">${esc(memTimelineMsg)}</span>` : '';
   root.innerHTML = `
     <div class="card">
@@ -5289,13 +5317,19 @@ async function renderTimeline(): Promise<void> {
         ${msgHtml}
       </div>
       <div id="mem-tl-list"></div>
+      ${totalPages > 1 ? `
+      <div class="tl-pager">
+        <button class="ghost tl-prev" ${tlPage === 0 ? 'disabled' : ''}>‹</button>
+        <span class="tl-page-info">${tlPage + 1} / ${totalPages}（共 ${sorted.length} 条）</span>
+        <button class="ghost tl-next" ${tlPage >= totalPages - 1 ? 'disabled' : ''}>›</button>
+      </div>` : sorted.length > 0 ? `<div class="tl-page-info" style="text-align:center;padding:8px;color:var(--text-faint)">共 ${sorted.length} 条</div>` : ''}
     </div>
   `;
   const listEl = document.getElementById('mem-tl-list')!;
-  if (!sorted.length) {
+  if (!pageItems.length) {
     listEl.innerHTML = `<div class="empty-hint">${esc(tr('mem.empty'))}</div>`;
   } else {
-    listEl.innerHTML = sorted.map((m) => {
+    listEl.innerHTML = pageItems.map((m) => {
       const date = new Date(m.created_at).toLocaleString();
       const w = Math.round(m.weight * 100);
       const wColor = w > 60 ? '#4caf50' : w > 30 ? '#e8b339' : '#f44336';
@@ -5322,6 +5356,11 @@ async function renderTimeline(): Promise<void> {
     else setMemMsg(dr.error ?? 'error', false);
     renderTimeline();
   };
+  // 分页按钮
+  const prevBtn = root.querySelector('.tl-prev');
+  const nextBtn = root.querySelector('.tl-next');
+  if (prevBtn) (prevBtn as HTMLElement).onclick = () => { tlPage--; renderTimeline(); };
+  if (nextBtn) (nextBtn as HTMLElement).onclick = () => { tlPage++; renderTimeline(); };
 }
 
 // ── 会话导出 ──
