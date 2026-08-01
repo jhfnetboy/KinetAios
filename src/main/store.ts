@@ -378,13 +378,14 @@ export function deleteMemory(id: string): void {
 // 提取器从对话里抽 (subject, predicate, object),例:(用户, 偏好, Tailwind) / (用户, 在做, Halo 项目)。
 // ponytail: 不做 entity 字典/归一化 —— 直接存原文,模型自己处理同义;后续可加规范化层。
 export function loadMemoryTriples(convId?: string): Array<{ id: string; subject: string; predicate: string; object: string; conversation_id: string | null; created_at: number }> {
+  // ponytail: LIMIT 500 —— 超过时只取最新 500 条,后续可加翻页
   if (convId === undefined) {
     return db
-      .prepare('SELECT id, subject, predicate, object, conversation_id, created_at FROM memory_triples ORDER BY created_at DESC;')
+      .prepare('SELECT id, subject, predicate, object, conversation_id, created_at FROM memory_triples ORDER BY created_at DESC LIMIT 500;')
       .all() as Array<{ id: string; subject: string; predicate: string; object: string; conversation_id: string | null; created_at: number }>;
   }
   return db
-    .prepare('SELECT id, subject, predicate, object, conversation_id, created_at FROM memory_triples WHERE conversation_id=? ORDER BY created_at DESC;')
+    .prepare('SELECT id, subject, predicate, object, conversation_id, created_at FROM memory_triples WHERE conversation_id=? ORDER BY created_at DESC LIMIT 500;')
     .all(convId) as Array<{ id: string; subject: string; predicate: string; object: string; conversation_id: string | null; created_at: number }>;
 }
 
@@ -599,36 +600,39 @@ export function touchMemoryUsed(id: string): void {
 
 // 执行衰减:weight *= 0.95^(days_since_last_used),weight < 0.1 的连同 memory 一起删除。
 // 返回被清除的条数。
-// 未被 recall 命中过(last_used=0)的记忆用 created_at 做 fallback,而非当成 1970 年。
+// 未被 recall 命中过(无 memory_meta 行)的记忆按 weight=1.0 / last_used=created_at 参与。
 export function decayMemories(): number {
   const now = Date.now();
   const dayMs = 86400_000;
   const hasEmbed = hasTable('memory_embeddings');
+  const hasMeta = hasTable('memory_meta');
   // 预编译 statement(避免循环内重复 prepare)
   const stmtDel = db.prepare('DELETE FROM memories WHERE id=?;');
-  const stmtDelMeta = db.prepare('DELETE FROM memory_meta WHERE memory_id=?;');
+  const stmtDelMeta = hasMeta ? db.prepare('DELETE FROM memory_meta WHERE memory_id=?;') : null;
   const stmtDelEmbed = hasEmbed ? db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;') : null;
   const stmtUpdate = db.prepare('UPDATE memory_meta SET weight=? WHERE memory_id=?;');
-  // 一次 JOIN 拿到所有 meta + created_at,避免 N+1 查询
+  // 从 memories 表出发 LEFT JOIN meta,覆盖所有记忆(含从未被 recall 的长尾记忆)
   const all = (db.prepare(
-    `SELECT m.memory_id, m.weight, m.last_used,
-       (SELECT created_at FROM memories WHERE id = m.memory_id) AS created_at
-     FROM memory_meta m;`,
-  ).all()) as Array<{ memory_id: string; weight: number; last_used: number; created_at: number | null }>;
+    `SELECT mem.id AS memory_id, mem.created_at AS created_at,
+       m.weight AS weight, m.last_used AS last_used
+     FROM memories mem
+     LEFT JOIN memory_meta m ON m.memory_id = mem.id;`,
+  ).all()) as Array<{ memory_id: string; weight: number | null; last_used: number | null; created_at: number | null }>;
   let pruned = 0;
   const tx = db.transaction(() => {
     for (const m of all) {
+      const weight = m.weight ?? 1.0;      // 无 meta → 初始权重 1.0
       // last_used 存毫秒;created_at 存秒。统一到毫秒。
-      let refTs = m.last_used;
-      if (!refTs) refTs = (m.created_at ?? now / 1000) * 1000;
+      const refTs = m.last_used || (m.created_at ?? now / 1000) * 1000;
       const days = (now - refTs) / dayMs;
-      const decayed = m.weight * Math.pow(0.95, days);
+      const decayed = weight * Math.pow(0.95, days);
       if (decayed < 0.1) {
         stmtDel.run(m.memory_id);
-        stmtDelMeta.run(m.memory_id);
+        if (stmtDelMeta) stmtDelMeta.run(m.memory_id);
         if (stmtDelEmbed) stmtDelEmbed.run(m.memory_id);
         pruned++;
-      } else {
+      } else if (m.weight !== null) {
+        // 有 meta 行才更新;无 meta 的不自动创建(下次 recall 命中时 touchMemoryUsed 会创建)
         stmtUpdate.run(decayed, m.memory_id);
       }
     }

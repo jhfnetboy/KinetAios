@@ -4085,8 +4085,9 @@ async function openMemoryPanel(): Promise<void> {
 }
 function closeMemoryPanel(): void {
   document.getElementById('memory-modal')!.classList.remove('show');
-  // 停止力导向图动画 + 清理 RO/listener,释放 CPU
+  // 停止力导向图动画 + 清理 RO/listener + 取消 pending rAF,释放 CPU
   stopGraphAnim();
+  if (mmGraphPendingRaf) { cancelAnimationFrame(mmGraphPendingRaf); mmGraphPendingRaf = 0; }
   if (mmGraphCleanup) { mmGraphCleanup(); mmGraphCleanup = null; }
 }
 async function renderMemoryList(): Promise<void> {
@@ -4147,7 +4148,8 @@ async function renderMemoryList(): Promise<void> {
     row.querySelector<HTMLElement>('.mm-edit')!.onclick = () => memEdit(row, id);
     row.querySelector<HTMLElement>('.mm-del')!.onclick = async () => {
       if (!confirm(tr('mem.delConfirm'))) return;
-      await api.memoryDelete(id);
+      const r = await api.memoryDelete(id);
+      if (!r.ok) { alert(r.error ?? '删除失败'); return; }
       await renderMemoryList();
     };
   });
@@ -4155,7 +4157,13 @@ async function renderMemoryList(): Promise<void> {
 // Memory Graph 视图:力导向图(默认) / 三元组列表(可切换)。按当前 scope 过滤。
 let mmGraphMode: 'viz' | 'list' = 'viz';
 let mmGraphAnim = 0; // requestAnimationFrame id(0 = 未运行)
+let mmGraphPendingRaf = 0; // renderGraphViz 的延迟 rAF id(防止 closeMemoryPanel 竞态)
 async function renderMemoryGraph(): Promise<void> {
+  // 入口统一清理:不管走哪条分支(空/error/list/viz),上一次的 RO+listener 必须释放
+  if (mmGraphCleanup) { mmGraphCleanup(); mmGraphCleanup = null; }
+  stopGraphAnim();
+  if (mmGraphPendingRaf) { cancelAnimationFrame(mmGraphPendingRaf); mmGraphPendingRaf = 0; }
+
   const listEl = document.getElementById('mm-list')!;
   document.getElementById('mm-scope-this')!.classList.toggle('active', mmScope === 'this');
   document.getElementById('mm-scope-all')!.classList.toggle('active', mmScope === 'all');
@@ -4168,18 +4176,15 @@ async function renderMemoryGraph(): Promise<void> {
   vizBtn.title = mmGraphMode === 'viz' ? '切换列表' : '切换力导向图';
   vizBtn.onclick = async () => {
     mmGraphMode = mmGraphMode === 'viz' ? 'list' : 'viz';
-    stopGraphAnim();
     await renderMemoryGraph();
   };
   const convId = mmScope === 'this' && selectedId ? selectedId : undefined;
   const r = await api.memoryTriples(convId);
   if (!r.ok || !r.items) {
-    stopGraphAnim();
     listEl.innerHTML = `<div class="mm-empty">${esc(r.error ?? 'error')}</div>`;
     return;
   }
   if (!r.items.length) {
-    stopGraphAnim();
     listEl.innerHTML = `<div class="mm-empty">${esc(tr('graph.empty'))}</div>`;
     return;
   }
@@ -4192,7 +4197,6 @@ async function renderGraphList(
   listEl: HTMLElement,
   items: Array<{ id: string; subject: string; predicate: string; object: string; conversation_id: string | null }>,
 ): Promise<void> {
-  stopGraphAnim();
   listEl.innerHTML = items
     .map((t) => {
       const from = t.conversation_id ? convLabel(t.conversation_id) : '';
@@ -4213,7 +4217,8 @@ async function renderGraphList(
     const id = row.dataset.id!;
     row.querySelector<HTMLElement>('.mm-del')!.onclick = async () => {
       if (!confirm(tr('graph.delConfirm'))) return;
-      await api.memoryTripleDelete(id);
+      const r = await api.memoryTripleDelete(id);
+      if (!r.ok) { alert(r.error ?? '删除失败'); return; }
       await renderMemoryGraph();
     };
   });
@@ -4263,8 +4268,8 @@ async function renderGraphViz(
   wrap.appendChild(tipBar);
   listEl.appendChild(wrap);
 
-  // 等一帧让 layout 生效,拿容器尺寸
-  requestAnimationFrame(() => runForceGraph(canvas, nodes, edges, tipBar));
+  // 等一帧让 layout 生效,拿容器尺寸(记 rAF id 防止 closeMemoryPanel 竞态)
+  mmGraphPendingRaf = requestAnimationFrame(() => { mmGraphPendingRaf = 0; runForceGraph(canvas, nodes, edges, tipBar); });
 }
 
 function makeNode(label: string): GNode {
@@ -4286,6 +4291,16 @@ function runForceGraph(canvas: HTMLCanvasElement, nodes: GNode[], edges: GEdge[]
   const ac = new AbortController();
   const ctx = canvas.getContext('2d')!;
   const dpr = window.devicePixelRatio || 1;
+  // 读一次主题色(用于 canvas 绘制,避免硬编码在浅色主题不可读)
+  const cs = getComputedStyle(document.documentElement);
+  const C = {
+    edge: cs.getPropertyValue('--text-faint').trim() || 'rgba(120,120,130,0.3)',
+    edgeHL: cs.getPropertyValue('--accent').trim() || 'rgba(232,179,57,0.6)',
+    accent: cs.getPropertyValue('--accent').trim() || '#b88200',
+    accentLight: cs.getPropertyValue('--accent-dim').trim() || '#f0c860',
+    text: cs.getPropertyValue('--text').trim() || '#fff',
+    textDim: cs.getPropertyValue('--text-dim').trim() || '#777',
+  };
 
   // 视口状态:平移 + 缩放
   let panX = 0, panY = 0, zoom = 1;
@@ -4382,7 +4397,7 @@ function runForceGraph(canvas: HTMLCanvasElement, nodes: GNode[], edges: GEdge[]
       if (!a || !b) continue;
       const isHL = hoverNode && (hoverNode === a || hoverNode === b);
       // 线
-      ctx.strokeStyle = isHL ? 'rgba(232,179,57,0.6)' : 'rgba(120,120,130,0.3)';
+      ctx.strokeStyle = isHL ? C.edgeHL : C.edge;
       ctx.lineWidth = isHL ? 2 : 1;
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
@@ -4396,7 +4411,7 @@ function runForceGraph(canvas: HTMLCanvasElement, nodes: GNode[], edges: GEdge[]
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const tw = ctx.measureText(e.label).width;
-      ctx.fillStyle = isHL ? 'rgba(232,179,57,0.9)' : 'rgba(160,160,170,0.7)';
+      ctx.fillStyle = isHL ? C.edgeHL : C.textDim;
       ctx.fillText(e.label, mx, my - 7);
     }
 
@@ -4412,23 +4427,25 @@ function runForceGraph(canvas: HTMLCanvasElement, nodes: GNode[], edges: GEdge[]
       if (isHL) {
         ctx.beginPath();
         ctx.arc(n.x, n.y, n.r + 6, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(232,179,57,0.15)';
+        ctx.globalAlpha = 0.15;
+        ctx.fillStyle = C.edgeHL;
         ctx.fill();
+        ctx.globalAlpha = 1;
       }
       // 节点圆
       ctx.beginPath();
       ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
       const grad = ctx.createRadialGradient(n.x - n.r * 0.3, n.y - n.r * 0.3, 0, n.x, n.y, n.r);
       if (dim) {
-        grad.addColorStop(0, '#4a4a52');
-        grad.addColorStop(1, '#333338');
+        grad.addColorStop(0, C.textDim);
+        grad.addColorStop(1, C.edge);
       } else {
-        grad.addColorStop(0, '#f0c860');
-        grad.addColorStop(1, '#b88200');
+        grad.addColorStop(0, C.accentLight);
+        grad.addColorStop(1, C.accent);
       }
       ctx.fillStyle = grad;
       ctx.fill();
-      ctx.strokeStyle = dim ? 'rgba(60,60,65,0.5)' : 'rgba(232,179,57,0.8)';
+      ctx.strokeStyle = dim ? C.edge : C.edgeHL;
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
@@ -4436,11 +4453,11 @@ function runForceGraph(canvas: HTMLCanvasElement, nodes: GNode[], edges: GEdge[]
       ctx.font = `${Math.max(10, Math.min(14, n.r * 0.6))}px system-ui`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      // 文字描边(可读性)
-      ctx.strokeStyle = 'rgba(20,20,23,0.9)';
+      // 文字描边(可读性)— 用 bg 色描边确保跨主题可读
+      ctx.strokeStyle = cs.getPropertyValue('--bg').trim() || 'rgba(20,20,23,0.9)';
       ctx.lineWidth = 3;
       ctx.strokeText(n.label, n.x, n.y);
-      ctx.fillStyle = dim ? '#777' : '#fff';
+      ctx.fillStyle = dim ? C.textDim : C.text;
       ctx.fillText(n.label, n.x, n.y);
     }
     ctx.restore();
@@ -4456,7 +4473,7 @@ function runForceGraph(canvas: HTMLCanvasElement, nodes: GNode[], edges: GEdge[]
     ctx.lineTo(tipX - aSize * Math.cos(angle - 0.4), tipY - aSize * Math.sin(angle - 0.4));
     ctx.lineTo(tipX - aSize * Math.cos(angle + 0.4), tipY - aSize * Math.sin(angle + 0.4));
     ctx.closePath();
-    ctx.fillStyle = 'rgba(120,120,130,0.5)';
+    ctx.fillStyle = C.edge;
     ctx.fill();
   }
 
@@ -4466,11 +4483,11 @@ function runForceGraph(canvas: HTMLCanvasElement, nodes: GNode[], edges: GEdge[]
     simulate();
     render();
     frame++;
-    // 收敛后降帧(省 CPU):速度都很小了 → 每 3 帧才模拟一次
+    // 收敛后降帧(省 CPU):速度都很小了 → skip 1 frame(~30fps)
     const totalV = nodes.reduce((s, n) => s + Math.abs(n.vx) + Math.abs(n.vy), 0);
     if (totalV < 0.5 && frame > 300) {
-      // 基本稳定了,降到 ~10fps
-      mmGraphAnim = requestAnimationFrame(() => { mmGraphAnim = requestAnimationFrame(tick) as unknown as number; }) as unknown as number;
+      // 基本稳定了,隔帧渲染
+      mmGraphAnim = requestAnimationFrame(() => { mmGraphAnim = requestAnimationFrame(tick); });
       return;
     }
     mmGraphAnim = requestAnimationFrame(tick);
@@ -4561,7 +4578,7 @@ function memEdit(row: HTMLElement, id: string): void {
   const original = row.querySelector<HTMLElement>('.mm-text')!.textContent ?? '';
   row.innerHTML = `<textarea class="mm-input"></textarea>
     <div class="mm-actions">
-      <span class="mm-edit-msg sub" style="font-size:11px"></span>
+      <span class="mm-edit-msg"></span>
       <button class="primary mm-save">${esc(tr('mem.save'))}</button>
       <button class="ghost mm-cancel">${esc(tr('mem.cancel'))}</button>
     </div>`;
