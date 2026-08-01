@@ -840,17 +840,21 @@ function renderMain() {
   const conv = selectedId ? convs.get(selectedId) : undefined;
   renderHead(conv);
   const turns = document.getElementById('turns')!;
-  turns.innerHTML = '';
+  // 离屏构建再一次性挂载,避免 innerHTML='' 后到新 DOM 创建之间的空白帧(闪屏)。
+  // Build off-screen then attach in one pass — avoids a blank frame between clearing and repopulating.
+  const frag = document.createDocumentFragment();
   if (!conv) {
-    turns.appendChild(empty(tr('empty.noConv')));
+    frag.appendChild(empty(tr('empty.noConv')));
+    turns.replaceChildren(frag);
     return;
   }
   if (!conv.turns.length) {
-    turns.appendChild(empty(tr('empty.noTurns')));
+    frag.appendChild(empty(tr('empty.noTurns')));
   }
   for (let i = 0; i < conv.turns.length; i++) {
-    turns.appendChild(renderTurn(conv, i));
+    frag.appendChild(renderTurn(conv, i));
   }
+  turns.replaceChildren(frag);
   scrollDown();
   // 切会话后,文件 tab 若已挂,跟着换 cwd(切到当前会话的 cwd)。
   if (activeTab === 'files' && filesController) filesController.setCwd(conv.cwd);
