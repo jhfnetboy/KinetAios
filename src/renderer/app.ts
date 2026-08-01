@@ -2552,9 +2552,11 @@ function closeMoreMenu() { document.getElementById('sb-more-menu')?.classList.re
     // IME 组合输入中(中文/日文等还没确认候选):按键交给输入法,避免 Enter 确认词被误当成发送。
     // 用手动跟踪的 composing 替代 e.isComposing,后者在某些 IME 上会卡 true。
     if (composing || e.isComposing || e.keyCode === 229) return;
-    // compositionend 后 300ms 内的 Enter 视为 IME 确认键,不发送。
-    // Enter within 300ms after compositionend = IME confirmation, not user send intent.
-    if (e.key === 'Enter' && !e.shiftKey && Date.now() - composeEndedAt < 300) return;
+    // compositionend 后短时间内的 Enter 视为 IME 确认键,不发送。
+    // 搜狗输入法:确认候选词的 Enter 在 compositionend 之后几毫秒内到达,100ms 足够区分。
+    // 之前 300ms 太长,用户快速打完字紧接着按 Enter 发送会被误吞(需按两次)。
+    // Enter within 100ms after compositionend = IME confirmation, not user send intent.
+    if (e.key === 'Enter' && !e.shiftKey && Date.now() - composeEndedAt < 100) return;
     if (!slashMenu.hidden) {
       if (e.key === 'ArrowDown') { e.preventDefault(); moveSlash(1); return; }
       if (e.key === 'ArrowUp') { e.preventDefault(); moveSlash(-1); return; }
