@@ -478,6 +478,24 @@
   backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
   -webkit-backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
 }
+/* Tahoe: modal 遮罩 — 浅色半透明(默认黑色遮罩在浅色液态玻璃主题下显灰) */
+[data-theme="tahoe"] #memory-modal,
+[data-theme="tahoe"] #snapshot-modal,
+[data-theme="tahoe"] #modal,
+[data-theme="tahoe"] #prompt-modal,
+[data-theme="tahoe"] #context-modal,
+[data-theme="tahoe"] #cron-modal,
+[data-theme="tahoe"] #ctx-inspector-modal,
+[data-theme="tahoe"] .modal-overlay {
+  background: rgba(200,220,240,0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+/* Tahoe: 记忆面板容器 — 更深模糊让玻璃效果更明显 */
+[data-theme="tahoe"] .mm-card {
+  backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+  -webkit-backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+}
 /* Tahoe: 主按钮 — systemBlue 液态按钮(三段渐变 + 顶高光 + 边光) */
 [data-theme="tahoe"] button.primary {
   background: linear-gradient(180deg, #409cff 0%, #0a84ff 50%, #0066cc 100%);
@@ -1951,6 +1969,24 @@ button.sm { padding: 3px 8px; font-size: 11px; }
 [data-theme="sierra"] #settings-view,
 [data-theme="sierra"] .modal-box,
 [data-theme="sierra"] .inspect-modal {
+  backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+  -webkit-backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+}
+/* Sierra: modal 遮罩 — 暖色半透明(默认黑色遮罩在暖色液态玻璃主题下显灰) */
+[data-theme="sierra"] #memory-modal,
+[data-theme="sierra"] #snapshot-modal,
+[data-theme="sierra"] #modal,
+[data-theme="sierra"] #prompt-modal,
+[data-theme="sierra"] #context-modal,
+[data-theme="sierra"] #cron-modal,
+[data-theme="sierra"] #ctx-inspector-modal,
+[data-theme="sierra"] .modal-overlay {
+  background: rgba(240,220,200,0.40);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+/* Sierra: 记忆面板容器 — 更深模糊让玻璃效果更明显 */
+[data-theme="sierra"] .mm-card {
   backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
   -webkit-backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
 }
