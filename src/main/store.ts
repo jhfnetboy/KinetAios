@@ -360,7 +360,7 @@ export function addMemory(content: string, convId?: string): string {
 
 export function updateMemory(id: string, content: string): void {
   db.prepare('UPDATE memories SET content=? WHERE id=?;').run(content, id);
-  // content 变了 → 删旧 embedding(recall 会回退 FTS5,下次 extract 时重新 embed)
+  // content 变了 → 删旧 embedding;memory-update IPC handler 会同步重建新 embedding。
   if (hasTable('memory_embeddings')) db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;').run(id);
 }
 
@@ -577,7 +577,7 @@ export function deleteCustomTool(id: string): void {
 
 // MARK: memory_meta — 记忆权重/衰减/时间线
 export function loadMemoryTimeline(): Array<{ id: string; content: string; conversation_id: string | null; created_at: number; weight: number; lastUsed: number; useCount: number }> {
-  const mems = (db.prepare('SELECT id, content, conversation_id, created_at FROM memories ORDER BY created_at DESC;').all()) as Array<{ id: string; content: string; conversation_id: string | null; created_at: number }>;
+  const mems = (db.prepare('SELECT id, content, conversation_id, created_at FROM memories ORDER BY created_at DESC LIMIT 500;').all()) as Array<{ id: string; content: string; conversation_id: string | null; created_at: number }>;
   const metas = new Map<string, { weight: number; last_used: number; use_count: number }>();
   for (const m of (db.prepare('SELECT memory_id, weight, last_used, use_count FROM memory_meta;').all()) as Array<{ memory_id: string; weight: number; last_used: number; use_count: number }>) {
     metas.set(m.memory_id, { weight: m.weight, last_used: m.last_used, use_count: m.use_count });
