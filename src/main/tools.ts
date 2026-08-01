@@ -610,16 +610,16 @@ const recallMemory: Tool = {
     // ponytail ceiling:embedding 只覆盖 memories 表(facts),history 表(对话原文)仍走 FTS5;
     // 后续要全量语义召回需把每轮对话也 embed,数量级会涨,先做 fact 这一档。
     try {
-      const { embed } = await import('./glm');
-      const { snapshot } = await import('./settings');
-      const snap = snapshot();
-      const qVecArr = await embed([q], snap);
-      if (qVecArr[0]?.length) {
-        const qVec = new Float32Array(qVecArr[0]);
-        const rows = store.listMemoryEmbeddings();
-        if (rows.length) {
-          const byId = new Map(rows.map((r) => [r.memoryId, r]));
-          const scored = rows
+      // 先查表,空表直接跳过 embed(省 API 调用)
+      const embedRows = store.listMemoryEmbeddings();
+      if (embedRows.length) {
+        const { embed } = await import('./glm');
+        const { snapshot } = await import('./settings');
+        const snap = snapshot();
+        const qVecArr = await embed([q], snap);
+        if (qVecArr[0]?.length) {
+          const qVec = new Float32Array(qVecArr[0]);
+          const scored = embedRows
             .map((r) => ({ memoryId: r.memoryId, content: r.content, score: store.cosine(qVec, r.vec) }))
             .filter((r) => r.score > 0.2)
             .sort((a, b) => b.score - a.score)

@@ -7,7 +7,7 @@ import zlib from 'node:zlib';
 import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { initStore, loadMemories, allMemoryContents, addMemory, updateMemory, deleteMemory, loadMemoryTriples, tripleProvenance, addMemoryTriple, deleteMemoryTriple, loadTaskGraph, saveConversation, saveTurn, searchEnriched, arenaAggregate } from './store';
+import { initStore, loadMemories, allMemoryContents, addMemory, updateMemory, deleteMemory, loadMemoryTriples, tripleProvenance, addMemoryTriple, deleteMemoryTriple, loadTaskGraph, saveConversation, saveTurn, searchEnriched, arenaAggregate, setMemoryEmbedding } from './store';
 import { saveCustomTool, loadCustomTools, deleteCustomTool, loadMemoryTimeline, decayMemories, dedupMemories } from './store';
 import { listSnapshots, restoreSnapshot } from './snapshots';
 import { pluginListSnap, invalidatePluginCache, installPlugin, uninstallPlugin, togglePlugin, pluginPanelsSnap } from './plugins';
@@ -1073,9 +1073,18 @@ function registerIpc(): void {
       return { ok: false, error: (e as Error)?.message ?? String(e) };
     }
   });
-  ipcMain.handle('memory-update', (_e, id: string, content: string) => {
+  ipcMain.handle('memory-update', async (_e, id: string, content: string) => {
     try {
       updateMemory(id, content);
+      // content 变了 → 同步重建 embedding(失败不阻塞,recall 回退 FTS5)
+      try {
+        const { embed } = await import('./glm');
+        const { snapshot, embedSnapshot } = await import('./settings');
+        const snap = snapshot();
+        const esnap = embedSnapshot();
+        const vecs = await embed([content], snap);
+        if (vecs[0]?.length) setMemoryEmbedding(id, vecs[0], esnap.model);
+      } catch { /* embedding 失败 = recall 回退 FTS5,可接受 */ }
       return { ok: true };
     } catch (e) {
       return { ok: false, error: (e as Error)?.message ?? String(e) };

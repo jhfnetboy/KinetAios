@@ -371,8 +371,15 @@ export class TaskManager {
   // Best-effort: extract durable facts about the user from a finished turn (uses the Direct provider).
   // Bound by the turn's abort signal (cancel stops it) + a 30s timeout so it can't hang or run away。
   // 输出两部分:facts(原有,自由文本记忆)+ triples(Phase 4 新增,主谓宾三元组,Memory Graph 用)。
+  // 同会话 extraction 串行化(防止并发提取产生重复 fact/triple)
+  private extractionLocks = new Map<string, Promise<void>>();
   private async extractMemories(turn: Conversation['turns'][number], prompt: string, convId: string, parentSignal: AbortSignal): Promise<void> {
     if (!turn.answer || turn.answer.length <= 15) return;
+    // 串行化:等同一会话的上一次 extraction 完成
+    const prev = this.extractionLocks.get(convId) ?? Promise.resolve();
+    let release!: () => void;
+    this.extractionLocks.set(convId, new Promise<void>((r) => { release = r; }));
+    try { await prev.catch(() => {}); } finally { /* prev done, continue */ }
     const snap = snapshot(this.convs.get(convId)?.profileId);
     const sys = `你是记忆提取器。从下面这轮对话里提取【关于用户本人】的持久事实 —— 身份、职业、偏好、习惯、技术栈、家庭/宠物、所在城市、工具链、长期项目、价值观。
 哪怕只透出一点点信号也提取,宁可多提取不要漏。
@@ -400,7 +407,6 @@ export class TaskManager {
       );
       const { facts, triples } = parseExtraction(comp.content);
       const existingFacts = store.allMemoryContents();
-      const added: string[] = [];
 
       // ── 去重策略:精确匹配 → 模糊去重(Jaccard) → 语义去重(embedding cosine)
       // 1. 精确匹配(快,过滤掉完全一样的)
@@ -430,9 +436,6 @@ export class TaskManager {
       } else {
         try {
           const { embed } = await import('./glm');
-          const { embedSnapshot } = await import('./settings');
-          const esnap = embedSnapshot();
-          const snap = snapshot(this.convs.get(convId)?.profileId);
           // embed 候选 + 全部已有记忆,算 cosine
           const candVecs = await embed(candidates, snap, ac.signal);
           const embeddings = store.listMemoryEmbeddings();
@@ -468,14 +471,17 @@ export class TaskManager {
         }
       }
 
+      const added: Array<{ id: string; text: string }> = [];
       for (const f of finalFacts) {
-        store.addMemory(f, convId);
+        if (parentSignal.aborted) return;
+        const id = store.addMemory(f, convId);
         existingFacts.push(f);
-        added.push(f);
+        added.push({ id, text: f });
       }
       // triples 去重按小写 s|p|o,跨频道也去重(全局知识图谱语义)。
       const existingTriples = store.allMemoryTripleKeys();
       for (const t of triples) {
+        if (parentSignal.aborted) return;
         const key = `${t.s}|${t.p}|${t.o}`.toLowerCase();
         if (!existingTriples.has(key)) {
           store.addMemoryTriple(t.s, t.p, t.o, convId);
@@ -488,20 +494,10 @@ export class TaskManager {
         try {
           const { embedSnapshot } = await import('./settings');
           const esnap = embedSnapshot();
-          const recent = store.loadMemories(undefined);
-          const byContent = new Map(recent.map((r) => [r.content, r.id]));
-          // 收集需要 embed 的 (id, content) 对
-          const toEmbed: Array<{ id: string; text: string }> = [];
-          for (const f of added) {
-            const id = byContent.get(f);
-            if (id) toEmbed.push({ id, text: f });
-          }
-          if (toEmbed.length) {
-            // 一次性批量 embed 所有 fact
-            const vecs = await embed(toEmbed.map((e) => e.text), snap, ac.signal);
-            for (let i = 0; i < toEmbed.length && i < vecs.length; i++) {
-              if (vecs[i]?.length) store.setMemoryEmbedding(toEmbed[i].id, vecs[i], esnap.model);
-            }
+          // 一次性批量 embed 所有新 fact
+          const vecs = await embed(added.map((e) => e.text), snap, ac.signal);
+          for (let i = 0; i < added.length && i < vecs.length; i++) {
+            if (vecs[i]?.length) store.setMemoryEmbedding(added[i].id, vecs[i], esnap.model);
           }
         } catch {
           /* embeddings 全失败也无所谓,recall 回退 FTS5 */
@@ -512,6 +508,7 @@ export class TaskManager {
     } finally {
       clearTimeout(timer);
       parentSignal.removeEventListener('abort', onParentAbort);
+      release();
     }
   }
 

@@ -5337,7 +5337,8 @@ function setMemMsg(text: string, ok: boolean): void {
 async function renderTimeline(): Promise<void> {
   const root = document.getElementById('timeline-view')!;
   const r = await api.memoryTimeline();
-  const items = r.ok ? r.items ?? [] : [];
+  if (!r.ok) { setMemMsg(r.error ?? '加载失败', false); return; }
+  const items = r.items ?? [];
   const sorted = [...items].sort((a, b) => b.created_at - a.created_at);
   const totalPages = Math.max(1, Math.ceil(sorted.length / TL_PAGE_SIZE));
   if (tlPage >= totalPages) tlPage = totalPages - 1;
