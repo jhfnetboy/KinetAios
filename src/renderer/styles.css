@@ -52,7 +52,7 @@
   --bg: #f5f5f8;
   --bg-side: #eeeef2;
   --bg-elev: #ffffff;
-  --bg-elev-2: #ffffff;
+  --bg-elev-2: #f7f7fa;
   --bg-input: #ffffff;
   --border: #d8d8df;
   --border-soft: #e4e4ea;
@@ -138,7 +138,9 @@
 [data-theme="aurora"] .modal-card,
 [data-theme="aurora"] #settings-view,
 [data-theme="aurora"] .s-section,
-[data-theme="aurora"] #wb .card {
+[data-theme="aurora"] #wb .card,
+[data-theme="aurora"] #timeline-view .card,
+[data-theme="aurora"] .mm-row {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -279,7 +281,9 @@
 [data-theme="serene"] .modal-card,
 [data-theme="serene"] #settings-view,
 [data-theme="serene"] .s-section,
-[data-theme="serene"] #wb .card {
+[data-theme="serene"] #wb .card,
+[data-theme="serene"] #timeline-view .card,
+[data-theme="serene"] .mm-row {
   background: var(--serene-glass);
   backdrop-filter: blur(var(--serene-blur));
   -webkit-backdrop-filter: blur(var(--serene-blur));
@@ -454,7 +458,9 @@
 [data-theme="tahoe"] #wb .card,
 [data-theme="tahoe"] .cost-card,
 [data-theme="tahoe"] .tpl-card,
-[data-theme="tahoe"] .ctool-card {
+[data-theme="tahoe"] .ctool-card,
+[data-theme="tahoe"] #timeline-view .card,
+[data-theme="tahoe"] .mm-row {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
@@ -1445,7 +1451,7 @@ body.files { display: flex; flex-direction: column; height: 100vh; margin: 0; us
 /* graph viz 模式:mm-list 撑满可用空间给 canvas */
 .mm-list:has(.mm-graph-wrap) { flex: 1 1 400px; overflow: hidden; }
 .mm-empty { color: var(--text-dim); font-size: 13px; padding: 24px; text-align: center; }
-.mm-row { border: 1px solid var(--border-soft); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; background: var(--bg-elev); box-shadow: var(--shadow-xs); transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+.mm-row { border: 1px solid var(--border-soft); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; background: var(--bg-elev-2); box-shadow: var(--shadow-xs); transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
 .mm-row:hover { border-color: var(--accent-dim); box-shadow: var(--shadow-sm); }
 .mm-text { font-size: 13px; line-height: 1.5; user-select: text; white-space: pre-wrap; word-break: break-word; color: var(--text); }
 .mm-from { font-size: 11px; color: var(--text-faint); }
@@ -1928,7 +1934,9 @@ button.sm { padding: 3px 8px; font-size: 11px; }
 [data-theme="sierra"] #wb .card,
 [data-theme="sierra"] .cost-card,
 [data-theme="sierra"] .tpl-card,
-[data-theme="sierra"] .ctool-card {
+[data-theme="sierra"] .ctool-card,
+[data-theme="sierra"] #timeline-view .card,
+[data-theme="sierra"] .mm-row {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
