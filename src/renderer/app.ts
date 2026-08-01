@@ -2403,7 +2403,7 @@ function closeMoreMenu() { document.getElementById('sb-more-menu')?.classList.re
   document.getElementById('ctx-insp-cancel')!.onclick = closeCtxInspector;
   document.getElementById('ctx-insp-save')!.onclick = () => void saveCtxInspector();
   document.getElementById('ctx-insp-add')!.onclick = () => addCtxMsg();
-  document.getElementById('btn-send')!.onclick = send;
+  document.getElementById('btn-send')!.onclick = () => void send();
   document.getElementById('modal-ok')!.onclick = () => closeConfirm(true);
   document.getElementById('modal-cancel')!.onclick = () => closeConfirm(false);
   // 项目背景编辑器(workbench 卡片「背景」按钮触发)。
@@ -2514,9 +2514,16 @@ function closeMoreMenu() { document.getElementById('sb-more-menu')?.classList.re
   });
 
   const composer = document.getElementById('composer') as HTMLTextAreaElement;
+  // IME composition 状态跟踪 —— e.isComposing 在某些中文输入法(微软拼音/搜狗)上可能卡 true,
+  // 导致 Enter 永远被吞。用 compositionstart/end 手动跟踪作为 fallback。
+  // Track IME state manually — e.isComposing can get stuck on some Windows IMEs.
+  let composing = false;
+  composer.addEventListener('compositionstart', () => { composing = true; });
+  composer.addEventListener('compositionend', () => { composing = false; });
   composer.addEventListener('keydown', (e) => {
     // IME 组合输入中(中文/日文等还没确认候选):按键交给输入法,避免 Enter 确认词被误当成发送。
-    if (e.isComposing || e.keyCode === 229) return;
+    // 用手动跟踪的 composing 替代 e.isComposing,后者在某些 IME 上会卡 true。
+    if (composing || e.isComposing || e.keyCode === 229) return;
     if (!slashMenu.hidden) {
       if (e.key === 'ArrowDown') { e.preventDefault(); moveSlash(1); return; }
       if (e.key === 'ArrowUp') { e.preventDefault(); moveSlash(-1); return; }
@@ -2525,7 +2532,7 @@ function closeMoreMenu() { document.getElementById('sb-more-menu')?.classList.re
     }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      send();
+      void send();
     }
   });
   composer.addEventListener('input', () => {
@@ -3202,53 +3209,70 @@ function speakText(text: string): void {
   window.speechSynthesis.speak(u);
 }
 
+// 发送防重入锁 —— send() 是 async,await 期间用户可能再按 Enter 或点按钮。
+// Without this, rapid Enter presses cause duplicate sends or cancel/send races.
+let sending = false;
+
 async function send() {
   if (!selectedId) return;
+  // 防重入:上一次 send 的 async 操作还没完(如 await api.send / api.cancel)。
+  if (sending) return;
   // Running → the same button acts as Stop (cancel the in-flight task).
   if (convs.get(selectedId)?.status === 'running') {
-    await api.cancel(selectedId);
+    sending = true;
+    // 立即更新 UI:按钮恢复"发送"状态,不等 onConversation 回来(避免竞态窗口)。
+    // Update button immediately — don't wait for onConversation round-trip.
+    const conv = convs.get(selectedId);
+    if (conv) conv.status = 'ready';
+    renderHead(conv);
+    try { await api.cancel(selectedId); } finally { sending = false; }
     return;
   }
   closeSlash();
   const composer = document.getElementById('composer') as HTMLTextAreaElement;
   const typed = composer.value;
   if (!typed.trim() && !attachments.length && !imageAttachments.length) return;
-  // @文件引用 + 📎 附件:内容拼到正文前(代码块包裹,模型可直接读取)。
-  const cwd = convs.get(selectedId)?.cwd ?? '';
-  const at = cwd ? await resolveAtFiles(typed, cwd) : { files: [], missing: [] };
-  const files = [...attachments, ...at.files];
-  let text = typed;
-  if (files.length) {
-    text = files.map((a) => `📎 文件 ${a.name}:\n\`\`\`\n${a.content}\n\`\`\``).join('\n\n') + '\n\n---\n\n' + typed;
-  }
-  // 🖼️ 图片附件:发给 Direct 引擎时,标记 prompt 含图片(主进程 send 把 imageAttachments 拼进 ChatMsg content parts)。
-  if (imageAttachments.length) {
-    const imgNote = imageAttachments.length === 1 ? `\n\n[📷 1 张图片已附加]` : `\n\n[📷 ${imageAttachments.length} 张图片已附加]`;
-    text += imgNote;
-    // 将图片 base64 作为特殊 JSON 块附加到 text 末尾,Direct 引擎的 send 拆解。
-    const imgs = imageAttachments.map((a) => JSON.stringify(a));
-    text += `\n\x00IMAGES${JSON.stringify(imgs)}\x00`;
-  }
-  if (at.missing.length) alert(tr('attach.missingAlert', { list: at.missing.join('\n') }));
-  showChat();
-  // 先发送,成功后再清空(IPC 失败时用户数据不丢失)
+  sending = true;
   try {
-    await api.send(selectedId, text);
-  } catch (e) {
-    alert(tr('send.failed', { msg: (e as Error)?.message ?? String(e) }));
-    return; // 不清空,用户可重试
+    // @文件引用 + 📎 附件:内容拼到正文前(代码块包裹,模型可直接读取)。
+    const cwd = convs.get(selectedId)?.cwd ?? '';
+    const at = cwd ? await resolveAtFiles(typed, cwd) : { files: [], missing: [] };
+    const files = [...attachments, ...at.files];
+    let text = typed;
+    if (files.length) {
+      text = files.map((a) => `📎 文件 ${a.name}:\n\`\`\`\n${a.content}\n\`\`\``).join('\n\n') + '\n\n---\n\n' + typed;
+    }
+    // 🖼️ 图片附件:发给 Direct 引擎时,标记 prompt 含图片(主进程 send 把 imageAttachments 拼进 ChatMsg content parts)。
+    if (imageAttachments.length) {
+      const imgNote = imageAttachments.length === 1 ? `\n\n[📷 1 张图片已附加]` : `\n\n[📷 ${imageAttachments.length} 张图片已附加]`;
+      text += imgNote;
+      // 将图片 base64 作为特殊 JSON 块附加到 text 末尾,Direct 引擎的 send 拆解。
+      const imgs = imageAttachments.map((a) => JSON.stringify(a));
+      text += `\n\x00IMAGES${JSON.stringify(imgs)}\x00`;
+    }
+    if (at.missing.length) alert(tr('attach.missingAlert', { list: at.missing.join('\n') }));
+    showChat();
+    // 先发送,成功后再清空(IPC 失败时用户数据不丢失)
+    try {
+      await api.send(selectedId, text);
+    } catch (e) {
+      alert(tr('send.failed', { msg: (e as Error)?.message ?? String(e) }));
+      return; // 不清空,用户可重试
+    }
+    // 发送成功 → 清空 composer + 附件
+    if (files.length) {
+      attachments = [];
+    }
+    if (imageAttachments.length) {
+      imageAttachments = [];
+    }
+    renderAttach();
+    composer.value = '';
+    autosize(composer);
+    document.getElementById('composer')!.focus();
+  } finally {
+    sending = false;
   }
-  // 发送成功 → 清空 composer + 附件
-  if (files.length) {
-    attachments = [];
-  }
-  if (imageAttachments.length) {
-    imageAttachments = [];
-  }
-  renderAttach();
-  composer.value = '';
-  autosize(composer);
-  document.getElementById('composer')!.focus();
 }
 
 function showChat() {
