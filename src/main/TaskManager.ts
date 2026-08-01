@@ -399,14 +399,84 @@ export class TaskManager {
         () => {},
       );
       const { facts, triples } = parseExtraction(comp.content);
-      const existingFacts = new Set(store.allMemoryContents());
+      const existingFacts = store.allMemoryContents();
       const added: string[] = [];
-      for (const f of facts) {
-        if (f && !existingFacts.has(f)) {
-          store.addMemory(f, convId);
-          existingFacts.add(f);
-          added.push(f);
+
+      // ── 去重策略:精确匹配 → 模糊去重(Jaccard) → 语义去重(embedding cosine)
+      // 1. 精确匹配(快,过滤掉完全一样的)
+      // 2. 无 embedding 接口时:用 Jaccard token 相似度(> 0.6 视为重复)
+      // 3. 有 embedding 接口时:cosine > 0.85 视为重复(语义级,最准)
+      // ──────────────────────────────────────────────────────────────────────
+      const isDuplicateFuzzy = (candidate: string): boolean => {
+        const candTokens = tokenize(candidate);
+        if (candTokens.size === 0) return true; // 空串 → 当重复跳过
+        for (const ex of existingFacts) {
+          const exTokens = tokenize(ex);
+          if (exTokens.size === 0) continue;
+          const sim = jaccard(candTokens, exTokens);
+          if (sim >= 0.6) return true;
         }
+        return false;
+      };
+
+      // 先做精确 + 模糊过滤,拿到「文字层不重复」的候选
+      const candidates: string[] = [];
+      for (const f of facts) {
+        if (!f) continue;
+        if (existingFacts.includes(f)) continue; // 精确匹配
+        if (isDuplicateFuzzy(f)) continue; // 模糊匹配
+        candidates.push(f);
+      }
+
+      // 有 embedding 接口时再过一遍语义去重
+      let finalFacts: string[];
+      if (candidates.length === 0) {
+        finalFacts = [];
+      } else {
+        try {
+          const { embed } = await import('./glm');
+          const { embedSnapshot } = await import('./settings');
+          const esnap = embedSnapshot();
+          const snap = snapshot(this.convs.get(convId)?.profileId);
+          // embed 候选 + 全部已有记忆,算 cosine
+          const candVecs = await embed(candidates, snap, ac.signal);
+          const embeddings = store.listMemoryEmbeddings();
+          if (embeddings.length > 0) {
+            // 有已有 embedding → 算 cosine
+            finalFacts = [];
+            for (let i = 0; i < candidates.length; i++) {
+              if (!candVecs[i]?.length) { finalFacts.push(candidates[i]); continue; }
+              const candVec = new Float32Array(candVecs[i]);
+              let isDup = false;
+              for (const ex of embeddings) {
+                if (store.cosine(candVec, ex.vec) > 0.85) { isDup = true; break; }
+              }
+              if (!isDup) finalFacts.push(candidates[i]);
+            }
+          } else {
+            // 没有已有 embedding → 候选之间互相去重
+            finalFacts = [];
+            const accepted: Float32Array[] = [];
+            for (let i = 0; i < candidates.length; i++) {
+              if (!candVecs[i]?.length) { finalFacts.push(candidates[i]); continue; }
+              const candVec = new Float32Array(candVecs[i]);
+              let isDup = false;
+              for (const acc of accepted) {
+                if (store.cosine(candVec, acc) > 0.85) { isDup = true; break; }
+              }
+              if (!isDup) { finalFacts.push(candidates[i]); accepted.push(candVec); }
+            }
+          }
+        } catch {
+          // embedding 不可用 → 模糊去重的结果就是最终结果
+          finalFacts = candidates;
+        }
+      }
+
+      for (const f of finalFacts) {
+        store.addMemory(f, convId);
+        existingFacts.push(f);
+        added.push(f);
       }
       // triples 去重按小写 s|p|o,跨频道也去重(全局知识图谱语义)。
       const existingTriples = store.allMemoryTripleKeys();
@@ -660,4 +730,26 @@ function parseFactsLegacy(s: string): string[] {
   } catch {
     return [];
   }
+}
+
+// ── 记忆模糊去重:Jaccard token 相似度(embedding 不可用时的降级方案)──
+// 中文按字 bigram,英文按单词;空格/标点分割。
+function tokenize(s: string): Set<string> {
+  const tokens = new Set<string>();
+  // 英文/数字 token
+  const words = s.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+  for (const w of words) tokens.add(w);
+  // 中文 bigram("用户用Mac" → "用户","户用","用m"…)
+  const cleaned = s.replace(/\s+/g, '');
+  for (let i = 0; i < cleaned.length - 1; i++) {
+    tokens.add(cleaned.slice(i, i + 2));
+  }
+  return tokens;
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let inter = 0;
+  for (const t of a) if (b.has(t)) inter++;
+  return inter / (a.size + b.size - inter);
 }

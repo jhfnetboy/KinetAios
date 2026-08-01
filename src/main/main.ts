@@ -8,7 +8,7 @@ import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { initStore, loadMemories, allMemoryContents, addMemory, updateMemory, deleteMemory, loadMemoryTriples, tripleProvenance, addMemoryTriple, deleteMemoryTriple, loadTaskGraph, saveConversation, saveTurn, searchEnriched, arenaAggregate } from './store';
-import { saveCustomTool, loadCustomTools, deleteCustomTool, loadMemoryTimeline, decayMemories } from './store';
+import { saveCustomTool, loadCustomTools, deleteCustomTool, loadMemoryTimeline, decayMemories, dedupMemories } from './store';
 import { listSnapshots, restoreSnapshot } from './snapshots';
 import { pluginListSnap, invalidatePluginCache, installPlugin, uninstallPlugin, togglePlugin, pluginPanelsSnap } from './plugins';
 import { setCronTasks, setDispatcher, startCronScheduler, stopCronScheduler, validateCron } from './cron';
@@ -1338,6 +1338,14 @@ function registerIpc(): void {
   ipcMain.handle('memory-decay', () => {
     try {
       const pruned = decayMemories();
+      return { ok: true, pruned };
+    } catch (e) {
+      return { ok: false, error: (e as Error)?.message ?? String(e) };
+    }
+  });
+  ipcMain.handle('memory-dedup', () => {
+    try {
+      const pruned = dedupMemories(0.6);
       return { ok: true, pruned };
     } catch (e) {
       return { ok: false, error: (e as Error)?.message ?? String(e) };

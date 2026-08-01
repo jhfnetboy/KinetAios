@@ -94,6 +94,7 @@ const api: KinetAPI = {
   // 记忆时间线
   memoryTimeline: () => ipcRenderer.invoke('memory-timeline'),
   memoryDecay: () => ipcRenderer.invoke('memory-decay'),
+  memoryDedup: () => ipcRenderer.invoke('memory-dedup'),
   // 会话导出
   exportConversation: (convId, format) => ipcRenderer.invoke('export-conversation', convId, format),
   // Arena Diff

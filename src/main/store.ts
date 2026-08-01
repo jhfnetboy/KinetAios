@@ -276,6 +276,52 @@ export function searchMemories(q: string, limit = 20): Array<{ id: string; conte
   ).all(like, limit) as Array<{ id: string; content: string; conversation_id: string | null }>;
 }
 
+// ── 存量记忆去重清理:用 Jaccard 模糊相似度合并重复记忆 ──
+// 返回被删除的条数。threshold 以下视为重复,保留最早创建的那条(历史更久的更可信)。
+export function dedupMemories(threshold = 0.6): number {
+  const all = db.prepare('SELECT id, content, created_at FROM memories ORDER BY created_at ASC;').all() as Array<{
+    id: string; content: string; created_at: number;
+  }>;
+  const tokenize = (s: string): Set<string> => {
+    const tokens = new Set<string>();
+    const words = s.toLowerCase().match(/[a-z0-9]+/g) ?? [];
+    for (const w of words) tokens.add(w);
+    const cleaned = s.replace(/\s+/g, '');
+    for (let i = 0; i < cleaned.length - 1; i++) tokens.add(cleaned.slice(i, i + 2));
+    return tokens;
+  };
+  const jaccard = (a: Set<string>, b: Set<string>): number => {
+    if (a.size === 0 || b.size === 0) return 0;
+    let inter = 0;
+    for (const t of a) if (b.has(t)) inter++;
+    return inter / (a.size + b.size - inter);
+  };
+
+  const tokenized = all.map((m) => ({ ...m, tokens: tokenize(m.content) }));
+  const toDelete = new Set<string>();
+
+  for (let i = 0; i < tokenized.length; i++) {
+    if (toDelete.has(tokenized[i].id)) continue;
+    for (let j = i + 1; j < tokenized.length; j++) {
+      if (toDelete.has(tokenized[j].id)) continue;
+      if (jaccard(tokenized[i].tokens, tokenized[j].tokens) >= threshold) {
+        toDelete.add(tokenized[j].id); // 删后来的,保留 i(更早创建)
+      }
+    }
+  }
+
+  let pruned = 0;
+  db.transaction(() => {
+    for (const id of toDelete) {
+      db.prepare('DELETE FROM memories WHERE id=?;').run(id);
+      db.prepare('DELETE FROM memory_embeddings WHERE memory_id=?;').run(id);
+      db.prepare('DELETE FROM memory_meta WHERE memory_id=?;').run(id);
+      pruned++;
+    }
+  })();
+  return pruned;
+}
+
 export function addMemory(content: string, convId?: string): string {
   const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
   db.prepare('INSERT INTO memories(id, content, created_at, conversation_id) VALUES(?,?,?,?);').run(

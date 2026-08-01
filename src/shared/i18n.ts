@@ -614,6 +614,8 @@ const ZH_CN: Dict = {
   'mem.used': '引用 {n} 次',
   'mem.decay': '⚡ 执行衰减',
   'mem.decayDone': '已清理 {n} 条低权重记忆',
+  'mem.dedup': '🔀 去重记忆',
+  'mem.dedupDone': '已合并 {n} 条重复记忆',
   'mem.pruneThreshold': '权重低于 0.1 的将被清除',
 
   // ── 会话导出 ──
@@ -1231,6 +1233,8 @@ const EN: Dict = {
   'mem.used': 'Used {n} times',
   'mem.decay': '⚡ Run decay',
   'mem.decayDone': 'Pruned {n} low-weight memories',
+  'mem.dedup': '🔀 Deduplicate',
+  'mem.dedupDone': 'Merged {n} duplicate memories',
   'mem.pruneThreshold': 'Memories with weight below 0.1 will be pruned',
 
   // ── Export conversation ──
@@ -1850,6 +1854,8 @@ const ZH_TW: Dict = {
   'mem.used': '引用 {n} 次',
   'mem.decay': '⚡ 執行衰減',
   'mem.decayDone': '已清理 {n} 條低權重記憶',
+  'mem.dedup': '🔀 去重記憶',
+  'mem.dedupDone': '已合併 {n} 條重複記憶',
   'mem.pruneThreshold': '權重低於 0.1 的將被清除',
 
   // ── 會話匯出 ──
@@ -2469,6 +2475,8 @@ const JA: Dict = {
   'mem.used': '{n} 回参照',
   'mem.decay': '⚡ 減衰を実行',
   'mem.decayDone': '低重みメモリ {n} 件を削除',
+  'mem.dedup': '🔀 重複排除',
+  'mem.dedupDone': '重複メモリ {n} 件を統合',
   'mem.pruneThreshold': '重み 0.1 未満のメモリが削除されます',
 
   // ── セッションエクスポート ──

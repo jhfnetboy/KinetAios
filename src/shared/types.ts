@@ -440,6 +440,7 @@ export interface KinetAPI {
   // ── 记忆时间线 ──
   memoryTimeline(): Promise<{ ok: boolean; items?: MemoryWithMeta[]; error?: string }>;
   memoryDecay(): Promise<{ ok: boolean; pruned?: number; error?: string }>;
+  memoryDedup(): Promise<{ ok: boolean; pruned?: number; error?: string }>;
   // ── 会话导出 ──
   exportConversation(convId: string, format: ExportFormat): Promise<{ ok: boolean; path?: string; error?: string }>;
   // ── Arena Diff ──

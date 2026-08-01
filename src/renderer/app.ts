@@ -5274,6 +5274,7 @@ async function renderTimeline(): Promise<void> {
       <div class="sub">${tr('mem.timelineSub')}</div>
       <div style="margin:10px 0">
         <button id="mem-decay-btn" class="ghost">${tr('mem.decay')}</button>
+        <button id="mem-dedup-btn" class="ghost" style="margin-left:4px">${tr('mem.dedup')}</button>
         <span class="sub" style="margin-left:8px">${tr('mem.pruneThreshold')}</span>
       </div>
       <div id="mem-tl-list"></div>
@@ -5301,6 +5302,11 @@ async function renderTimeline(): Promise<void> {
   document.getElementById('mem-decay-btn')!.onclick = async () => {
     const dr = await api.memoryDecay();
     if (dr.ok) showMsg(tr('mem.decayDone', { n: dr.pruned ?? 0 }), true);
+    renderTimeline();
+  };
+  document.getElementById('mem-dedup-btn')!.onclick = async () => {
+    const dr = await api.memoryDedup();
+    if (dr.ok) showMsg(tr('mem.dedupDone', { n: dr.pruned ?? 0 }), true);
     renderTimeline();
   };
 }
