@@ -625,6 +625,11 @@ function registerIpc(): void {
     taskManager.setConvProfile(id, profileId);
     return true;
   });
+  // 高保真模式开关 —— Direct 引擎不截断 tool result + 更大上下文预算。
+  ipcMain.handle('set-high-fidelity', (_e, id: string, on: boolean) => {
+    taskManager.setHighFidelity(id, on);
+    return true;
+  });
 
   ipcMain.handle('get-settings', () => getSettings());
   ipcMain.handle('save-settings', (_e, s: AppSettings) => {

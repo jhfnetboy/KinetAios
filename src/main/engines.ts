@@ -168,12 +168,13 @@ class DirectEngine implements Engine {
       history: conv.directHistory,
       ctx,
       signal,
+      highFidelity: conv.highFidelity,
       onEvent,
     });
     // abort 后 signal 已触发 → compactHistory 的摘要 LLM 调用也会被 abort(catch 后丢 head)。
     // 所以 abort 路径跳过 compactHistory,直接用 finalizeAbortedMessages 返回的完整 messages。
     if (!signal.aborted) {
-      conv.directHistory = await compactHistory(updated, 30_000, provider, snap, signal, onEvent);
+      conv.directHistory = await compactHistory(updated, conv.highFidelity ? 80_000 : 30_000, provider, snap, signal, onEvent);
     } else {
       conv.directHistory = updated;
     }

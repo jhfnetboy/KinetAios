@@ -683,6 +683,8 @@ button.primary:active { filter: brightness(0.95); transform: scale(0.97); box-sh
 button.ghost { background: transparent; border-color: transparent; color: var(--text-dim); box-shadow: none; transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
 button.ghost:hover { color: var(--text); background: var(--bg-elev); }
 button.ghost:active { transform: scale(0.95); }
+/* 高保真模式激活态:强调色高亮,让用户知道当前在烧 token */
+#btn-hifi.active { color: var(--accent); background: var(--bg-elev); }
 input, textarea, select {
   font: inherit; color: var(--text); background: var(--bg-input); border: 1px solid var(--border);
   border-radius: 7px; padding: 7px 10px; width: 100%;

@@ -101,6 +101,15 @@ export class TaskManager {
     this.emit.emitConversation(conv);
   }
 
+  // 高保真模式开关 —— 开启后 Direct 引擎不截断 tool result + 更大上下文预算(适合交叉分析)。
+  setHighFidelity(id: string, on: boolean): void {
+    const conv = this.convs.get(id);
+    if (!conv) return;
+    conv.highFidelity = on;
+    store.saveConversation(conv);
+    this.emit.emitConversation(conv);
+  }
+
   deleteConversation(id: string): void {
     this.cancel(id);
     store.deleteConversation(id);

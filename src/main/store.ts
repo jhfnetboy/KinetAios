@@ -64,6 +64,7 @@ export function initStore(): void {
     ['pipeline_id', 'TEXT'],   // pipeline 创建的会话标记,null = 非 pipeline
     ['goal', 'TEXT'],          // 会话目标(/goal 设置,持续注入 systemPrompt),null = 无目标
     ['profile_id', 'TEXT'],    // 绑定的模型配置档 ID,null = 用全局默认配置
+    ['high_fidelity', 'INTEGER'], // 高保真模式(0/1):不截断 tool result + 更大上下文预算
   ] as const) {
     if (!hasColumn('conversations', col)) db.exec(`ALTER TABLE conversations ADD COLUMN ${col} ${def};`);
   }
@@ -117,20 +118,23 @@ type ConvRow = {
   pipeline_id: string | null;
   goal: string | null;
   profile_id: string | null;
+  high_fidelity: number;
 };
 
 export function saveConversation(c: Conversation): void {
   db.prepare(
-    `INSERT INTO conversations(id, engine, cwd, created_at, custom_title, engine_session_id, model, branch_info, pipeline_id, goal, profile_id)
-     VALUES(?,?,?,?,?,?,?,?,?,?,?)
+    `INSERT INTO conversations(id, engine, cwd, created_at, custom_title, engine_session_id, model, branch_info, pipeline_id, goal, profile_id, high_fidelity)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
      ON CONFLICT(id) DO UPDATE SET engine=excluded.engine, cwd=excluded.cwd,
        custom_title=excluded.custom_title, engine_session_id=excluded.engine_session_id, model=excluded.model,
-       branch_info=excluded.branch_info, pipeline_id=excluded.pipeline_id, goal=excluded.goal, profile_id=excluded.profile_id;`,
+       branch_info=excluded.branch_info, pipeline_id=excluded.pipeline_id, goal=excluded.goal, profile_id=excluded.profile_id,
+       high_fidelity=excluded.high_fidelity;`,
   ).run(c.id, c.engine, c.cwd, c.createdAt, c.customTitle, c.engineSessionId, c.model,
     c.branchInfo ? JSON.stringify(c.branchInfo) : null,
     c.pipelineId ?? null,
     c.goal ?? null,
-    c.profileId ?? null);
+    c.profileId ?? null,
+    c.highFidelity ? 1 : 0);
 }
 
 export function updateConversationMeta(c: Conversation): void {
@@ -229,6 +233,7 @@ export function loadConversations(): Conversation[] {
       pipelineId: r.pipeline_id ?? null,
       goal: r.goal ?? null,
       profileId: r.profile_id ?? null,
+      highFidelity: !!r.high_fidelity,
     };
     return conv;
   });

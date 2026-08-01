@@ -932,6 +932,12 @@ function renderHead(conv: Conversation | undefined) {
       goalBar.style.display = 'none';
     }
   }
+  // 高保真模式按钮:激活态高亮 + 仅 Direct 引擎显示(CLI 引擎有自己的上下文管理)。
+  const hifiBtn = document.getElementById('btn-hifi');
+  if (hifiBtn) {
+    hifiBtn.classList.toggle('active', !!conv.highFidelity);
+    hifiBtn.style.display = conv.engine === 'direct' ? '' : 'none';
+  }
 }
 
 // Rebuild the engine dropdown from the toggle. Direct is always present; Claude/Codex only when
@@ -2399,6 +2405,12 @@ function closeMoreMenu() { document.getElementById('sb-more-menu')?.classList.re
   };
   document.getElementById('btn-rules-gen')!.onclick = () => openRuleGenerator();
   document.getElementById('btn-clear')!.onclick = () => selectedId && api.clearConversation(selectedId);
+  // 高保真模式切换:开启后 Direct 引擎不截断 tool result + 更大上下文预算(交叉分析用)。
+  document.getElementById('btn-hifi')!.onclick = () => {
+    if (!selectedId) return;
+    const conv = convs.get(selectedId);
+    void api.setHighFidelity(selectedId, !conv?.highFidelity);
+  };
   // 清除目标:发送 /goal(无参数)清除
   document.getElementById('btn-goal-clear')!.onclick = () => selectedId && void api.send(selectedId, '/goal');
   document.getElementById('btn-del')!.onclick = () => selectedId && api.deleteConversation(selectedId);
