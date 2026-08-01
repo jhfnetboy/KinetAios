@@ -414,7 +414,7 @@ export class TaskManager {
           const exTokens = tokenize(ex);
           if (exTokens.size === 0) continue;
           const sim = jaccard(candTokens, exTokens);
-          if (sim >= 0.6) return true;
+          if (sim >= 0.45) return true;
         }
         return false;
       };
